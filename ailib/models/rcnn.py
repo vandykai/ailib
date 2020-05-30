@@ -6,24 +6,26 @@ from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorD
 from torch.nn.utils import weight_norm, spectral_norm
 
 
-class TextCNNClassifier(BaseModule):
+class TextRCNNClassifier(BaseModule):
 
-    def __init__(self, vocab_size, embedding_dim=256, n_classes=2, kernel_dim=32, kernel_sizes=(3, 4, 5), dropout_p=0.5):
+    def __init__(self, vocab_size, embedding_dim=256, dropout_p=0.5, n_classes=2, bidirectional=True, batch_first=True, hidden_size=128, num_layers=2):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.convs = nn.ModuleList([nn.Conv2d(1, kernel_dim, (K, embedding_dim)) for K in kernel_sizes])
-        self.dropout = nn.Dropout(dropout_p)
-        self.fc = nn.Linear(len(kernel_sizes) * kernel_dim, n_classes)
+        self.lstm = nn.LSTM(embedding_dim, hidden_size, num_layers,
+                            bidirectional=bidirectional, batch_first=batch_first, dropout=dropout_p)
+        hidden_input_size = hidden_size * 2 if bidirectional else hidden_size
+        self.fc_middle = nn.Linear(hidden_input_size + embedding_dim, hidden_input_size)
+        self.fc = nn.Linear(hidden_input_size, n_classes)
 
     def forward(self, inputs):
-        inputs = self.embedding(inputs).unsqueeze(1) # (B,1,T,D)
-        inputs = [F.relu(conv(inputs)).squeeze(3) for conv in self.convs] #[(N,Co,W), ...]*len(Ks)
-        inputs = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in inputs] #[(N,Co), ...]*len(Ks)
-
-        concated = torch.cat(inputs, 1)
-
-        concated = self.dropout(concated) # (N,len(Ks)*Co)
-        out = self.fc(concated)
+        embed = self.embedding(inputs.long())
+        out, _ = self.lstm(embed)
+        out = torch.cat((embed, out), 2)
+        out = self.fc_middle(out)
+        out = torch.tanh(out)
+        out = out.permute(0, 2, 1)
+        out = F.max_pool1d(out, out.size(2)).squeeze(dim=2)
+        out = self.fc(out)
         return out
 
     def init_weights(self, pretrained_word_vectors=None, is_static=False):

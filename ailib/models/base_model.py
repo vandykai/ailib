@@ -1,4 +1,4 @@
-import torch
+from torch import nn
 
 class BaseModule(nn.Module):
     def __init__(self):
@@ -11,10 +11,10 @@ class BaseModule(nn.Module):
     def save(self, path):
         torch.save(self.state_dict(), path)
 
-    def init_weights(self):
+    def forward(self):
         raise NotImplementedError
 
-    def forward(self):
+    def init_weights(self):
         raise NotImplementedError
 
     def loss_function(self):
