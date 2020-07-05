@@ -39,11 +39,12 @@ class Model(nn.Module):
 
     def conv_and_pool(self, x, conv):
         x = F.relu(conv(x)).squeeze(3)
+        print(x)
         x = F.max_pool1d(x, x.size(2)).squeeze(2)
         return x
 
     def forward(self, x):
-        out = self.embedding(x[0])
+        out = self.embedding(x)
         out = out.unsqueeze(1)
         out = torch.cat([self.conv_and_pool(out, conv) for conv in self.convs], 1)
         out = self.dropout(out)
