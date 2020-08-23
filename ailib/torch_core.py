@@ -2,6 +2,7 @@
 import random
 import torch.nn as nn
 import numpy as np
+import torch
 
 def seed_all(seed_value):
     random.seed(seed_value) # Python
