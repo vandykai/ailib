@@ -5,6 +5,7 @@ import typing
 from ailib.text.basic_data import ch_punctuation, en_punctuation
 from ailib.text.text_is import is_en_word
 
+# 清 除 中  english混合文本 中多余的空格->清除中 english混合文本中多余的空格
 # 清除中英混合文本中多余的空格，转换中文空格为英文
 def clean_space(text: str) -> str:
     text = re.sub(u"[ 　]+", " ", text)
@@ -25,6 +26,18 @@ def count_word(text: str) -> int:
     ch_word = ch_word_regex.findall(text)
     en_word = en_word_regex.findall(text)
     return len(ch_word) + len(en_word)
+
+# 统计中文总共词数
+def count_cn_word(text: str) -> int:
+    ch_word_regex = re.compile(u'[\u4e00-\u9fa5]')
+    ch_word = ch_word_regex.findall(text)
+    return len(ch_word)
+
+# 统计英文总共词数
+def count_en_word(text: str) -> int:
+    en_word_regex = re.compile(r'[a-zA-Z\']+')
+    en_word = en_word_regex.findall(text)
+    return len(ch_word)
 
 # 使用结巴分词随机切分句子中的短语，用来生产短文本, 可能产生空字符串
 def jieba_random_cut(text: str) -> str:

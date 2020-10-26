@@ -30,9 +30,9 @@ def init_params(net):
     '''Init layer parameters.'''
     for m in net.modules():
         if isinstance(m, nn.Conv2d):
-            init.kaiming_normal(m.weight, mode='fan_out')
-            if m.bias:
-                init.constant(m.bias, 0)
+            init.kaiming_normal_(m.weight, mode='fan_out')
+            if m.bias is not None:
+                init.constant_(m.bias, 0)
         elif isinstance(m, nn.BatchNorm2d):
             init.constant_(m.weight, 1)
             init.constant_(m.bias, 0)
@@ -72,3 +72,16 @@ def format_time(seconds):
     if f == '':
         f = '0ms'
     return f
+
+def dict_get(data, key):
+    value = []
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if k == key:
+                value.append(v)
+            else:
+                value.extend(dict_get(v, key))
+    elif isinstance(data, list):
+        for item in data:
+            value.extend(dict_get(item, key))
+    return value

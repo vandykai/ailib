@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import pandas as pd
+import IPython
 
 @contextmanager
 def pd_display_all():
@@ -20,3 +21,6 @@ def pd_display_reset():
     yield None
     pd.options.display.max_columns = max_columns
     pd.options.display.max_rows = max_rows
+
+def display_img(img):
+    display(IPython.display.Image(img))

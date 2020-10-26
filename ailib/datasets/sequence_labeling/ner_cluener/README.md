@@ -1,0 +1,35 @@
+# 数据集名称
+# 数据集论文
+# 数据集来源
+https://github.com/crownpku/Information-Extraction-Chinese/tree/master/NER_IDCNN_CRF/data
+
+# 数据集说明
+train集：共20864句
+O        869087      88.76%
+I-ORG     37689       3.85%
+I-LOC     22531       2.30%
+B-LOC     16571       1.69%
+I-PER     15881       1.62%
+B-ORG      9277       0.95%
+B-PER      8144       0.83%
+
+dev集：共2318句
+O        97811       89.02%
+I-ORG     3945        3.59%
+I-LOC     2581        2.35%
+B-LOC     1951        1.78%
+I-PER     1714        1.56%
+B-ORG      984        0.90%
+B-PER      884        0.80%
+
+test集：共4636句
+O        194185      88.59%
+I-ORG      8756       3.99%
+I-LOC      4948       2.26%
+B-LOC      3658       1.67%
+I-PER      3601       1.64%
+B-ORG      2185       1.00%
+B-PER      1864       0.85%
+
+
+

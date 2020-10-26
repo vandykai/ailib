@@ -44,3 +44,30 @@ def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix')
 def plot_heatmap(cm, classes, data_fmt='d'):
     df_cm = pd.DataFrame(cm, index = classes, columns =classes)
     return sns.heatmap(df_cm, annot=True, fmt=data_fmt)
+
+def print_decisition_path(text_feature, clf, text_feature_name):
+    node_indicator = clf.decision_path(text_feature)
+    leave_id = clf.apply(text_feature)
+    n_nodes = clf.tree_.node_count
+    children_left = clf.tree_.children_left
+    children_right = clf.tree_.children_right
+    feature = clf.tree_.feature
+    threshold = clf.tree_.threshold
+    node_index = node_indicator.indices[node_indicator.indptr[0]:
+                                    node_indicator.indptr[0 + 1]]
+    for node_id in node_index:
+        if leave_id[0] == node_id:
+            continue
+
+        if (text_feature[0][feature[node_id]] <= threshold[node_id]):
+            threshold_sign = "<="
+        else:
+            threshold_sign = ">"
+
+        print("decision id node %s : (text_feature[%s, %s] (= %s) %s %s)"
+              % (node_id,
+                 0,
+                 text_feature_name[feature[node_id]],
+                 text_feature[0][feature[node_id]],
+                 threshold_sign,
+                 threshold[node_id]))
