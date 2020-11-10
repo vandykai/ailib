@@ -22,7 +22,7 @@ def clean_space(text: str) -> str:
 # 统计中英文总共词数
 def count_word(text: str) -> int:
     ch_word_regex = re.compile(u'[\u4e00-\u9fa5]')
-    en_word_regex = re.compile(r'[a-zA-Z\']+')
+    en_word_regex = re.compile(r'[a-zA-Z\'\-]+')
     ch_word = ch_word_regex.findall(text)
     en_word = en_word_regex.findall(text)
     return len(ch_word) + len(en_word)
@@ -35,7 +35,7 @@ def count_cn_word(text: str) -> int:
 
 # 统计英文总共词数
 def count_en_word(text: str) -> int:
-    en_word_regex = re.compile(r'[a-zA-Z\']+')
+    en_word_regex = re.compile(r'[a-zA-Z\'\-]+')
     en_word = en_word_regex.findall(text)
     return len(ch_word)
 
@@ -102,3 +102,14 @@ def jieba_random_cut(text: str, length_range: tuple) -> str:
     result = " ".join(text_list[start_index:end_index+1])
     result = clean_space(result)
     return result
+
+def file_de_duplication_line(file_name)
+    all_line = []
+    with open(file_name) as f:
+        for line in f:
+            line = line.strip()
+            if line not in temp_line:
+                all_line.append(line)
+    with open(file_name, "w") as f:
+        for line in all_line:
+            f.write(line+"\n")

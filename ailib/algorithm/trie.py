@@ -142,30 +142,34 @@ class MultiValueTrie:
         for c, child in node.children.items():
             yield from self.traverse(d, child)
 
-    def fuzzy_search(self, query, k, prefix=False, k_fn=None):
+    def fuzzy_search(self, query, k, sub=False, prefix=False, k_fn=None):
         n = len(query)
         tab = [[0] * (n + 1) for _ in range(n + k + 1)]
         for j in range(n + 1):
             tab[0][j] = j
         if not k_fn:
             k_fn = lambda i: k
-        yield from self._fuzzy_search(k_fn, tab, self.root, 1, query, prefix)
+        yield from self._fuzzy_search(k_fn, tab, self.root, 1, query, sub, prefix)
 
-    def _fuzzy_search(self, k_fn, tab, node, i, query, prefix=False):
+    def _fuzzy_search(self, k_fn, tab, node, i, query, sub=False, prefix=False):
         k = k_fn(i)
-        if prefix and i >= len(query) + 1:
+        if sub and i >= len(query) + 1:
             d = tab[i - 1][len(query)]
             if d <= k:
                 # yield sofar, d
                 yield from self.traverse(d, node)
             return
 
-        if node.value:
-            d = tab[i - 1][len(query)]
-            if d <= k:
-                yield node.value, d
         # Can't be more than length of query + k insertions. Don't allow
         # children
+        if prefix and node.value:
+            d = min(tab[i - 1])
+            if d <= k:
+                yield node.value, d, tab[i - 1].index(d)
+        elif not prefix and node.value:
+            d = tab[i - 1][len(query)]
+            if d <= k:
+                yield node.value, d, len(query)
         if i >= len(tab):
             return
         
@@ -181,7 +185,7 @@ class MultiValueTrie:
             smallest = min(tab[i])
             if smallest <= k:
                 yield from self._fuzzy_search(k_fn, tab, child,
-                                       i + 1, query, prefix)
+                                       i + 1, query, sub, prefix)
 
     def build_trie(self, data_path, trie_save_path=None):
         for line in open(data_path):

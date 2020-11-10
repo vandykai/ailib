@@ -22,5 +22,8 @@ def pd_display_reset():
     pd.options.display.max_columns = max_columns
     pd.options.display.max_rows = max_rows
 
-def display_img(img):
+def display_img(img_url):
     display(IPython.display.Image(img))
+
+def display_html(html_str):
+    display(IPython.display.HTML(html_str))
