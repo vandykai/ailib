@@ -6,8 +6,8 @@ import typing
 # latex公式 (mathjax语法格式，标记为'$$')
 pat_formula = re.compile(r'\$\$.+?\$\$')
 
-pat_clean_formula = re.compile(r'((\\not)?\\[a-zA-Z0-9]+)|\\(.)|_|^|\{|\}|\$\$')
-
+pat_clean_formula = re.compile(r'((\\not)?\\[a-zA-Z0-9]+)|\\(.)|_|\{|\}|\$\$')
+pat_special_html = re.compile(r"<u>((&nbsp;){1,})<\/u>")
 # html标记  (标记<*> 转义符)
 # pat_html_tags = re.compile(r'<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')
 pat_html_tags = re.compile(r'<.*?>|&([a-z0-9]+);|&#([0-9]{1,6});|&#x([0-9a-f]{1,6});')
@@ -98,6 +98,22 @@ map_html_entities = {
     'spades': '♠',  'clubs': '♣',  'hearts': '♥',  'diams': '♦'
 }
 
+def replace_special_html(text: str)-> str:
+    """
+    替换文本中特殊传递html标签，eg:<u>&nbsp;</u>->_
+    """
+    ret = ''
+    pos = 0
+    for tag in pat_special_html.finditer(text):
+        st, ed = tag.span()
+        if st > pos:
+            ret += text[pos:st]
+        t1 = tag.group(1)
+        if t1 is not None:
+            ret += "_"*t1.count("&nbsp;")
+        pos = ed
+    ret += text[pos:]
+    return ret
 
 def remove_html(text: str) -> str:
     """
@@ -228,6 +244,7 @@ def fenci_char(text: str) -> str:
 
     TODO - 汉语分词?
     """
+    text = replace_special_html(text)
     text = remove_html(text)
     text = remove_latex(text)
     ret = list()

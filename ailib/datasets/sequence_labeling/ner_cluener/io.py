@@ -8,7 +8,6 @@ def get_data(file_path):
     with open(file_path, 'r') as f:
         idx = 0
         for line in f:
-            json_d = {}
             line = json.loads(line.strip())
             text = line['text']
             label_entities = line.get('label', None)

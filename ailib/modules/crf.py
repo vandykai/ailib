@@ -9,29 +9,25 @@ def argmax(vec):
     _, idx = torch.max(vec, 1)
     return to_scalar(idx)
 
-def log_sum_exp(vec):
-    max_score = vec[0, argmax(vec)]
-    max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
-    return max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast)))
-
 def argmax_batch(vecs):
     _, idx = torch.max(vecs, 1)
     return idx
 
-def log_sum_exp_batch(vecs):
-    maxi = torch.max(vecs, 1)[0]
-    maxi_bc = maxi[:, None].repeat(1, vecs.shape[1])
-    recti_ = torch.log(torch.sum(torch.exp(vecs - maxi_bc), 1))
+def log_sum_exp_batch(vecs, dim=1):
+    maxi = torch.max(vecs, dim)[0]
+    maxi_bc = maxi.unsqueeze(dim)
+    recti_ = torch.log(torch.sum(torch.exp(vecs - maxi_bc), dim))
     return maxi + recti_
 
 class CRF(nn.Module):
+
     def __init__(self, start_tag_id, stop_tag_id, tagset_size):
         super(CRF,self).__init__()
 
         self.START_TAG_ID = start_tag_id
         self.STOP_TAG_ID = stop_tag_id
         self.tagset_size = tagset_size
-        self.transitions = torch.randn(tagset_size, tagset_size)
+        self.transitions = torch.randn(self.tagset_size, self.tagset_size)
         # self.transitions = torch.zeros(tagset_size, tagset_size)
         self.transitions.detach()[self.START_TAG_ID, :] = -10000
         self.transitions.detach()[:, self.STOP_TAG_ID] = -10000
@@ -41,10 +37,9 @@ class CRF(nn.Module):
         backpointers = []
         backscores = []
         scores = []
-        init_vvars = (torch.FloatTensor(1, self.tagset_size, device=feats.device).fill_(-10000.0))
+        init_vvars = torch.full((1, self.tagset_size), -10000., device=feats.device)
         init_vvars[0][self.START_TAG_ID] = 0
         forward_var = init_vvars
-
         for feat in feats:
             next_tag_var = (
                     forward_var.view(1, -1).expand(self.tagset_size, self.tagset_size)
@@ -73,32 +68,17 @@ class CRF(nn.Module):
             _, idx = torch.max(backscore, 0)
             prediction = idx.item()
             best_scores.append(softmax[prediction].item())
-            scores.append([elem.item() for elem in softmax.flatten()])
-        swap_best_path, swap_max_score = (
-            best_path[0],
-            scores[-1].index(max(scores[-1])),
-        )
-        scores[-1][swap_best_path], scores[-1][swap_max_score] = (
-            scores[-1][swap_max_score],
-            scores[-1][swap_best_path],
-        )
         start = best_path.pop()
         assert start == self.START_TAG_ID
         best_path.reverse()
-        return best_scores, best_path, scores
+        return best_scores, best_path
 
-    def _forward_alg(self, feats, lens_):
-        init_alphas = torch.FloatTensor(self.tagset_size).fill_(-10000.0)
+    def _forward_alg(self, feats, lengths):
+        init_alphas = torch.full((self.tagset_size, ), -10000.0, device=feats.device)
         init_alphas[self.START_TAG_ID] = 0.0
 
-        forward_var = torch.zeros(
-            feats.shape[0],
-            feats.shape[1] + 1,
-            feats.shape[2],
-            dtype=torch.float,
-            device=feats.device,
-        )
-        forward_var[:, 0, :] = init_alphas[None, :].repeat(feats.shape[0], 1)
+        forward_var = []
+        forward_var.append(init_alphas[None, :].repeat(feats.shape[0], 1))
         transitions = self.transitions.view(
             1, self.transitions.shape[0], self.transitions.shape[1]
         ).repeat(feats.shape[0], 1, 1)
@@ -107,57 +87,46 @@ class CRF(nn.Module):
             tag_var = (
                 emit_score[:, :, None].repeat(1, 1, transitions.shape[2])
                 + transitions
-                + forward_var[:, i, :][:, :, None]
+                + forward_var[-1][:, :, None]
                 .repeat(1, 1, transitions.shape[2])
                 .transpose(2, 1)
             )
-            max_tag_var, _ = torch.max(tag_var, dim=2)
-            tag_var = tag_var - max_tag_var[:, :, None].repeat(
-                1, 1, transitions.shape[2]
-            )
-            agg_ = torch.log(torch.sum(torch.exp(tag_var), dim=2))
-            cloned = forward_var.clone()
-            cloned[:, i + 1, :] = max_tag_var + agg_
-            forward_var = cloned
-        forward_var = forward_var[range(forward_var.shape[0]), lens_, :]
+            forward_var.append(log_sum_exp_batch(tag_var, dim=2))
+        forward_var = torch.stack(forward_var).transpose(0,1)
+        forward_var = forward_var[range(forward_var.shape[0]), lengths, :]
         terminal_var = forward_var + self.transitions[self.STOP_TAG_ID][None, :].repeat(forward_var.shape[0], 1)
-        alpha = log_sum_exp_batch(terminal_var)
+        alpha = log_sum_exp_batch(terminal_var, 1)
         return alpha
 
-    def _score_sentence(self, feats, tags, lens_):
-        start = torch.LongTensor([self.START_TAG_ID], device=tags.device)
-        start = start[None, :].repeat(tags.shape[0], 1)
-        stop = torch.LongTensor([self.STOP_TAG_ID], device=tags.device)
-        stop = stop[None, :].repeat(tags.shape[0], 1)
+    def _score_sentence(self, feats, lengths, tags):
+        start = torch.full([tags.shape[0], 1], self.START_TAG_ID, dtype=torch.long, device=tags.device)
+        stop = torch.full([tags.shape[0], 1], self.STOP_TAG_ID, dtype=torch.long, device=tags.device)
         pad_start_tags = torch.cat([start, tags], 1)
         pad_stop_tags = torch.cat([tags, stop], 1)
-        for i in range(len(lens_)):
-            pad_stop_tags[i, lens_[i] :] = self.STOP_TAG_ID
-        score = torch.FloatTensor(feats.shape[0], device=feats.device)
+        for i in range(len(lengths)):
+            pad_stop_tags[i, lengths[i] :] = self.STOP_TAG_ID
+        score = torch.full([feats.shape[0]], 0., dtype=torch.float, device=feats.device)
         for i in range(feats.shape[0]):
-            r = torch.LongTensor(range(lens_[i]), device=feats.device)
+            r = torch.tensor(range(lengths[i]), dtype=torch.long, device=feats.device)
             score[i] = torch.sum(
                 self.transitions[
-                    pad_stop_tags[i, : lens_[i] + 1], pad_start_tags[i, : lens_[i] + 1]
+                    pad_stop_tags[i, : lengths[i] + 1], pad_start_tags[i, : lengths[i] + 1]
                 ]
-            ) + torch.sum(feats[i, r, tags[i, : lens_[i]]])
+            ) + torch.sum(feats[i, r, tags[i, : lengths[i]]])
         return score
 
-    def _obtain_labels(self, feature, id2label,input_lens):
+    def obtain_labels(self, features, input_lens):
         tags = []
-        all_tags = []
-        for feats, length in zip(feature, input_lens):
-            confidences, tag_seq, scores = self._viterbi_decode(feats[:length])
-            tags.append([id2label[tag] for tag in tag_seq])
-            all_tags.append([[id2label[score_id] for score_id, score in enumerate(score_dist)] for score_dist in scores])
-        return tags, all_tags
+        tags_confidences = []
+        for feats, length in zip(features, input_lens):
+            confidences, tag_seq = self._viterbi_decode(feats[:length])
+            tags.append(tag_seq)
+            tags_confidences.append(confidences)
+        return tags, confidences
 
-    def calculate_loss(self, scores, tag_list,lengths):
-        return self._calculate_loss_old(scores, lengths, tag_list)
-
-    def _calculate_loss_old(self, features, lengths, tags):
+    def calculate_loss(self, features, lengths, tags):
         forward_score = self._forward_alg(features, lengths)
-        gold_score = self._score_sentence(features, tags, lengths)
+        gold_score = self._score_sentence(features, lengths, tags)
         score = forward_score - gold_score
         return score.mean()
 

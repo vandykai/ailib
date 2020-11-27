@@ -1,6 +1,7 @@
 from pathlib import Path
 import logging
 import torch.nn.init as init
+import torch.nn as nn
 
 def init_logger(log_file=None, log_file_level=logging.NOTSET):
     '''

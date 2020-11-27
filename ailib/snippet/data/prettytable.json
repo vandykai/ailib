@@ -1,0 +1,20 @@
+{
+    "prefix": "prettytable",
+    "body": [
+        "from collections import Counter",
+        "from prettytable import PrettyTable",
+        "counter = Counter()",
+        "for i in data_train:",
+        "    counter.update([i[1]])",
+        "counter = sorted(counter.items(), key = lambda kv:(kv[1], kv[0]), reverse=True)",
+        "",
+        "table = PrettyTable(['\u6807\u7b7e','\u6570\u91cf','\u767e\u5206\u6bd4'])",
+        "sum_value = 0",
+        "for key, value in counter:",
+        "    sum_value += value",
+        "for key, value in counter:",
+        "    table.add_row([key, value, \"{0:.2f}%\".format(value*100/sum_value)])",
+        "print(table)"
+    ],
+    "description": "use of prettytable"
+}

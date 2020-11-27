@@ -27,3 +27,7 @@ def display_img(img_url):
 
 def display_html(html_str):
     display(IPython.display.HTML(html_str))
+
+def display_pd(data_frame):
+    with pd_display_all():
+        display(data_frame)

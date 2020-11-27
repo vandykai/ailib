@@ -1,0 +1,8 @@
+{
+    "prefix": "autoreload",
+    "body": [
+        "%load_ext autoreload",
+        "%autoreload 2"
+    ],
+    "description": "use of autoreload"
+}
