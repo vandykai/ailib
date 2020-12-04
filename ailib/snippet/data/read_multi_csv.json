@@ -1,0 +1,10 @@
+{
+    "prefix": "read_multi_csv",
+    "body": [
+        "data = []",
+        "for file_name in file_names:",
+        "    data.append(pd.read_csv(file_name))",
+        "data_df = pd.concat(data,ignore_index = False)"
+    ],
+    "description": "read several csv into one dataframe"
+}

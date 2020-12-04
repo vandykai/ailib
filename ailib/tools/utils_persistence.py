@@ -2,8 +2,10 @@ import torch
 import numpy as np
 import json
 import pickle
+import dill
 import torch.nn as nn
 from pathlib import Path
+import logging
 
 def save_pickle(data, file_path):
     '''
@@ -30,6 +32,30 @@ def load_pickle(input_file):
         data = pickle.load(f)
     return data
 
+def save_dill(data, file_path):
+    '''
+    保存成dill文件
+    :param data:
+    :param file_name:
+    :param dill_path:
+    :return:
+    '''
+    if isinstance(file_path, Path):
+        file_path = str(file_path)
+    with open(file_path, 'wb') as f:
+        dill.dump(data, f)
+
+
+def load_dill(input_file):
+    '''
+    读取dill文件
+    :param dill_path:
+    :param file_name:
+    :return:
+    '''
+    with open(str(input_file), 'rb') as f:
+        data = dill.load(f)
+    return data
 
 def save_json(data, file_path):
     '''
@@ -110,24 +136,24 @@ def save_model(model, model_path):
         state_dict[key] = state_dict[key].cpu()
     torch.save(state_dict, model_path)
 
-def load_model(model, model_path):
+def load_model(model, model_path, state_key="state_dict"):
     '''
     加载模型
     :param model:
-    :param model_name:
     :param model_path:
-    :param only_param:
+    :param state_key:
     :return:
     '''
     if isinstance(model_path, Path):
         model_path = str(model_path)
     logging.info(f"loading model from {str(model_path)} .")
     states = torch.load(model_path)
-    state = states['state_dict']
+    if state_key:
+        states = states[state_key]
     if isinstance(model, nn.DataParallel):
-        model.module.load_state_dict(state)
+        model.module.load_state_dict(states)
     else:
-        model.load_state_dict(state)
+        model.load_state_dict(states)
     return model
 
 def restore_checkpoint(resume_path, model=None):

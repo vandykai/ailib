@@ -1,0 +1,29 @@
+{
+    "prefix": "torch_pad_collate_fn",
+    "body": [
+        "def train_pad_collate(samples, pad_idx=1, pad_first=True, backwards=False):",
+        "    \"Function that collect samples and adds padding. Flips token order if needed\"",
+        "    max_len = config.pad_size",
+        "    res = torch.zeros(len(samples), max_len).long() + pad_idx",
+        "    if backwards: pad_first = not pad_first",
+        "    for i,s in enumerate(samples):",
+        "        if pad_first: res[i,-len(s[0]):] = torch.LongTensor(s[0][0:max_len])",
+        "        else:         res[i,:len(s[0]):] = torch.LongTensor(s[0][0:max_len])",
+        "    if backwards: res = res.flip(1)",
+        "    return res, torch.tensor(np.array([s[1] for s in samples]))",
+        "",
+        "def test_pad_collate(samples, pad_idx=1, pad_first=True, backwards=False):",
+        "    \"Function that collect samples and adds padding. Flips token order if needed\"",
+        "    max_len = 64",
+        "    res = torch.zeros(len(samples), max_len).long() + pad_idx",
+        "    if backwards: pad_first = not pad_first",
+        "    for i,s in enumerate(samples):",
+        "        if pad_first: res[i,-len(s):] = torch.LongTensor(s[0][0:max_len])",
+        "        else:         res[i,:len(s):] = torch.LongTensor(s[0][0:max_len])",
+        "    if backwards: res = res.flip(1)",
+        "    return res",
+        "train_data_loader = DataLoader(train_data, collate_fn = train_pad_collate, batch_size=batch_size, num_workers=8, shuffle=True)",
+        "valid_data_loader = DataLoader(valid_data, collate_fn = train_pad_collate, batch_size=batch_size, num_workers=8, shuffle=False)"
+    ],
+    "description": "use of pytorch collate_fn"
+}
