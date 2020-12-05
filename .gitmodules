@@ -1,0 +1,3 @@
+[submodule "ailib/torchtext"]
+	path = ailib/torchtext
+	url = https://github.com/vandykai/torchtext.git
