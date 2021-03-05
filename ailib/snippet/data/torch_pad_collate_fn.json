@@ -25,5 +25,5 @@
         "train_data_loader = DataLoader(train_data, collate_fn = train_pad_collate, batch_size=batch_size, num_workers=8, shuffle=True)",
         "valid_data_loader = DataLoader(valid_data, collate_fn = train_pad_collate, batch_size=batch_size, num_workers=8, shuffle=False)"
     ],
-    "description": "use of pytorch collate_fn"
+    "description": "usage of pytorch collate_fn"
 }

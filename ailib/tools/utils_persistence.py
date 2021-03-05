@@ -7,7 +7,7 @@ import torch.nn as nn
 from pathlib import Path
 import logging
 
-def save_pickle(data, file_path):
+def save_pickle(data, file_path, **kwargs):
     '''
     保存成pickle文件
     :param data:
@@ -18,10 +18,10 @@ def save_pickle(data, file_path):
     if isinstance(file_path, Path):
         file_path = str(file_path)
     with open(file_path, 'wb') as f:
-        pickle.dump(data, f)
+        pickle.dump(data, f, **kwargs)
 
 
-def load_pickle(input_file):
+def load_pickle(input_file, **kwargs):
     '''
     读取pickle文件
     :param pickle_path:
@@ -29,7 +29,7 @@ def load_pickle(input_file):
     :return:
     '''
     with open(str(input_file), 'rb') as f:
-        data = pickle.load(f)
+        data = pickle.load(f, **kwargs)
     return data
 
 def save_dill(data, file_path):
@@ -120,11 +120,12 @@ def json_to_text(file_path,data):
             line = json.dumps(line, ensure_ascii=False)
             fw.write(line + '\n')
 
-def save_model(model, model_path):
+def save_model(model, model_path, **kwargs):
     """ 存储不含有显卡信息的state_dict或model
     :param model:
     :param model_name:
     :param only_param:
+    :param kwargs:other informations
     :return:
     """
     if isinstance(model_path, Path):
@@ -134,7 +135,10 @@ def save_model(model, model_path):
     state_dict = model.state_dict()
     for key in state_dict:
         state_dict[key] = state_dict[key].cpu()
-    torch.save(state_dict, model_path)
+    if kwargs:
+        assert "state_dict" not in kwargs
+        kwargs["state_dict"] = state_dict
+    torch.save(kwargs, model_path)
 
 def load_model(model, model_path, state_key="state_dict"):
     '''
@@ -142,19 +146,20 @@ def load_model(model, model_path, state_key="state_dict"):
     :param model:
     :param model_path:
     :param state_key:
-    :return:
+    :return: model and other information dict
     '''
     if isinstance(model_path, Path):
         model_path = str(model_path)
     logging.info(f"loading model from {str(model_path)} .")
     states = torch.load(model_path)
     if state_key:
-        states = states[state_key]
+        state_dict = states[state_key]
+        del states[state_key]
     if isinstance(model, nn.DataParallel):
-        model.module.load_state_dict(states)
+        model.module.load_state_dict(state_dict)
     else:
-        model.load_state_dict(states)
-    return model
+        model.load_state_dict(state_dict)
+    return model, states
 
 def restore_checkpoint(resume_path, model=None):
     '''
@@ -177,3 +182,21 @@ def restore_checkpoint(resume_path, model=None):
     else:
         model.load_state_dict(states)
     return [model,best,start_epoch]
+
+
+def save_state_dict(obj, file_path):
+    '''
+    加载模型
+    :param obj: 对象
+    :param file_path: 状态保存的路径
+    :return:
+    '''
+    pass
+
+def load_state_dict(obj, file_path):
+    """Loads the schedulers state.
+    Arguments:
+        state_dict (dict): scheduler state. Should be an object returned
+            from a call to :meth:`state_dict`.
+    """
+    pass

@@ -1,11 +1,11 @@
-from ailab.models.base_model import BaseModule
+from ailab.models.base_model import BaseModel
 import torch, torch.nn.functional as F
 from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
 from torch import nn, optim, as_tensor
 from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorDataset
 from torch.nn.utils import weight_norm, spectral_norm
 
-class DMN(BaseModule):
+class DMN(BaseModel):
     def __init__(self, vocab_size, hidden_size=80, output_size=2, dropout_p=0.1):
         super(DMN, self).__init__()
 

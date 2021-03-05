@@ -1,4 +1,4 @@
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
 from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
 from torch import nn, optim, as_tensor
@@ -7,7 +7,7 @@ from torch.nn.utils import weight_norm, spectral_norm
 from torch.nn import LayerNorm
 from ailib.modules.crf import CRF
 
-class Config(object):
+class ModelConfig(object):
 
     """配置参数"""
     def __init__(self):
@@ -37,7 +37,7 @@ class SpatialDropout(nn.Dropout2d):
         x = x.squeeze(2)  # (N, T, K)
         return x
 
-class Model(BaseModule):
+class Model(BaseModel):
 
     def __init__(self, config):
         super().__init__()

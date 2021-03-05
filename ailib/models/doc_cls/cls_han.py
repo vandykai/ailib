@@ -1,9 +1,9 @@
 
 import torch
 import torch.nn as nn
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 
-class Config():
+class ModelConfig():
     """配置参数"""
     def __init__(self):
         self.model_name = "HAN"
@@ -18,7 +18,7 @@ class Config():
         self.bidirectional = True                                       # 是否双向GRU
         self.n_classes = 0
 
-class WordRNN(BaseModule):
+class WordRNN(BaseModel):
 
     def __init__(self, config):
         super().__init__()

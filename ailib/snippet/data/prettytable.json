@@ -16,5 +16,5 @@
         "    table.add_row([key, value, \"{0:.2f}%\".format(value*100/sum_value)])",
         "print(table)"
     ],
-    "description": "use of prettytable"
+    "description": "usage of prettytable"
 }

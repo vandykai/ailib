@@ -1,0 +1,3 @@
+from .classification import ClassificationTask
+from .ranking import RankingTask
+from .classification_multi_label import ClassificationMultiLabelTask

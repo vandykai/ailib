@@ -2,9 +2,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from transformers import AlbertModel
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 
-class Config():
+class ModelConfig():
     """配置参数"""
     def __init__(self):
         self.model_name = "HierarchicalAlbert-tiny"
@@ -16,7 +16,7 @@ class Config():
         self.n_classes = 0
         self.learning_rate = 3e-5
 
-class Model(BaseModule):
+class Model(BaseModel):
 
     def __init__(self, config):
         super().__init__()

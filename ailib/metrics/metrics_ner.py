@@ -1,9 +1,10 @@
 import torch
 from collections import Counter
 from ailib.tools.utils_ner import get_entities
+from ailib.tools.utils_dict import IdentityDict
 
 class SeqEntityScore(object):
-    def __init__(self, id2label={}, markup='bios'):
+    def __init__(self, id2label=IdentityDict(), markup='bios'):
         self.id2label = id2label
         self.markup = markup
         self.reset()

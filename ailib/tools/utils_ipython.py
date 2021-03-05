@@ -23,7 +23,7 @@ def pd_display_reset():
     pd.options.display.max_rows = max_rows
 
 def display_img(img_url):
-    display(IPython.display.Image(img))
+    display(IPython.display.Image(img_url))
 
 def display_html(html_str):
     display(IPython.display.HTML(html_str))

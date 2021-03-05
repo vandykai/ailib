@@ -1,11 +1,11 @@
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
 from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
 from torch import nn, optim, as_tensor
 from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorDataset
 from torch.nn.utils import weight_norm, spectral_norm
 
-class Config(object):
+class ModelConfig(object):
 
     """配置参数"""
     def __init__(self):
@@ -21,11 +21,12 @@ class Config(object):
         self.hidden_size = 128                                          # lstm隐藏层
         self.n_gram_vocab = 0                                           # ngram 词表大小
 
-class Model(BaseModule):
+class Model(BaseModel):
 
     def __init__(self, config):
         '''Bag of Tricks for Efficient Text Classification'''
         super().__init__()
+        self.config = config
         if config.embedding_pretrained is not None:
             self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
         else:

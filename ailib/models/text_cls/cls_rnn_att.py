@@ -1,11 +1,11 @@
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
 from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
 from torch import nn, optim, as_tensor
 from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorDataset
 from torch.nn.utils import weight_norm, spectral_norm
 
-class Config(object):
+class ModelConfig(object):
 
     """配置参数"""
     def __init__(self):
@@ -24,10 +24,11 @@ class Config(object):
         self.num_layers = 2                                             # lstm层数
         self.bidirectional = True                                       # 是否双向lstm
 
-class Model(BaseModule):
+class Model(BaseModel):
     '''Attention-Based Bidirectional Long Short-Term Memory Networks for Relation Classification'''
     def __init__(self, config):
         super().__init__()
+        self.config = config
         if config.embedding_pretrained is not None:
             self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
         else:
@@ -55,3 +56,9 @@ class Model(BaseModule):
         out = self.fc1(out)
         out = self.fc(out)  # [128, 64]
         return out
+
+    def loss_function(self):
+        return nn.CrossEntropyLoss
+
+    def optimizer(self):
+        raise optim.Adam
