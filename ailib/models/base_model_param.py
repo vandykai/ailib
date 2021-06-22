@@ -1,3 +1,4 @@
+import numpy as np
 from ailib.param.param_table import ParamTable
 from ailib.param import hyper_spaces
 from ailib.param.param import Param
@@ -11,12 +12,20 @@ class BaseModelParam(ParamTable):
     def __init__(self, with_embedding=False, with_multi_layer_perceptron=False):
         super().__init__()
         self.add(Param(
+            name='model_name',
+            desc="Model name."
+        ))
+        self.add(Param(
             name='task',
             desc="Decides model output shape, loss, and metrics."
         ))
         self.add(Param(
             name='out_activation_func', value=None,
             desc="Activation function used in output layer."
+        ))
+        self.add(Param(
+            name='learning_rate', value=0.0,
+            desc="optimizer learning rate."
         ))
         if with_embedding:
             self.add(Param(

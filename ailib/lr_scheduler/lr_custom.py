@@ -14,14 +14,14 @@ class CustomDecayLR(object):
         >>>         optimizer.step()
         >>>     validate(...)
     '''
-    def __init__(self,optimizer,lr):
+    def __init__(self, optimizer, lr):
         if not isinstance(optimizer, Optimizer):
             raise TypeError('{} is not an Optimizer'.format(
                 type(optimizer).__name__))
         self.optimizer = optimizer
         self.lr = lr
 
-    def epoch_step(self,epoch):
+    def epoch_step(self, metrics, epoch=None):
         lr = self.lr
         if epoch > 12:
             lr = lr / 1000

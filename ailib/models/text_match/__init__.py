@@ -1,5 +1,5 @@
 from .dense_baseline import DenseBaseline
-from .dssm import DSSM
+from .dssm import Model as DSSM
 from .cdssm import CDSSM
 from .drmm import DRMM
 from .drmmtks import DRMMTKS
@@ -21,6 +21,6 @@ from .match_srnn import MatchSRNN
 
 
 def list_available() -> list:
-    from matchzoo.engine.base_model import BaseModel
-    from matchzoo.utils import list_recursive_concrete_subclasses
+    from ailib.models.base_model import BaseModel
+    from ailib.tools.utils_inheritance import list_recursive_concrete_subclasses
     return list_recursive_concrete_subclasses(BaseModel)

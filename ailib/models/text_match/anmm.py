@@ -3,20 +3,18 @@ import typing
 import torch
 import torch.nn as nn
 from ailib.models.base_model import BaseModel
-from ailib.models.base_match_model_param import BaseModelParam
+from ailib.models.base_model_param import BaseModelParam
 from ailib.modules.attention import Attention
 from ailib.modules.matching import Matching
 from ailib.param.param import Param
 from ailib.param import hyper_spaces
-from ailib.param.param_table import ParamTable
 from ailib.tools.utils_name_parse import parse_activation
 
 class ModelParam(BaseModelParam):
 
     def __init__(self, with_embedding=True, with_multi_layer_perceptron=False):
         super().__init__(with_embedding, with_multi_layer_perceptron)
-        self.add(Param(name='model_name', value="aNMM",
-                         desc="model name"))
+        self['model_name'] = "aNMM"
         self.add(Param(name='mask_value', value=0,
                          desc="The value to be masked from inputs."))
         self.add(Param(name='num_bins', value=200,

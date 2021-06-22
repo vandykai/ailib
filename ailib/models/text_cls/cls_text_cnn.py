@@ -1,10 +1,10 @@
 from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
-from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
-from torch import nn, optim, as_tensor
-from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorDataset
+from torch import nn, optim
 from torch.nn.utils import weight_norm, spectral_norm
-from ailib.models.base_match_model_param import BaseModelParam
+from ailib.models.base_model_param import BaseModelParam
+from ailib.param.param import Param
+from ailib.param import hyper_spaces
 
 class ModelConfig(object):
 
@@ -28,21 +28,17 @@ class ModelParam(BaseModelParam):
 
     def __init__(self, with_embedding=True, with_multi_layer_perceptron=False):
         super().__init__(with_embedding, with_multi_layer_perceptron)
-        self.add(Param(name='model_name', value="TextCNN",
-                         desc="model name"))
-        self.add(Param(name='embedding_pretrained', value=None,
-                         desc="The value to be masked from inputs."))
-        self.add(Param(name='n_classes', value=2,
-                         desc="The value to be masked from inputs."))
-        self.add(Param(name='num_bins', value=200,
-                         desc="Integer, number of bins."))
-        self.add(Param(name='hidden_sizes', value=[100],
-                         desc="Number of hidden size for each hidden layer"))
-        self.add(Param(name='activation', value='relu',
-                         desc="The activation function."))
-
+        self['model_name'] = "TextCNN"
+        self['learning_rate'] = 1e-3
+        self.add(Param(name='filter_sizes', value=(2, 3, 4),
+                         desc="卷积核尺寸."))
         self.add(Param(
-            'dropout_rate', 0.0,
+            name='num_filters', value=256,
+            hyper_space=hyper_spaces.quniform(
+                low=128, high=512, q=32),
+            desc="卷积核数量(channels数)"))
+        self.add(Param(
+            name='dropout_rate', value=0.0,
             hyper_space=hyper_spaces.quniform(
                 low=0.0, high=0.8, q=0.01),
             desc="The dropout rate."
@@ -56,14 +52,11 @@ class Model(BaseModel):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        if config.embedding_pretrained is not None:
-            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
-        else:
-            self.embedding = nn.Embedding(config.n_vocab, config.embed_size, padding_idx=config.padding_idx)
+        self.embedding = self._make_default_embedding_layer()
         self.convs = nn.ModuleList(
-            [nn.Conv2d(1, config.num_filters, (k, config.embed_size)) for k in config.filter_sizes])
-        self.dropout = nn.Dropout(config.dropout)
-        self.fc = nn.Linear(config.num_filters * len(config.filter_sizes), config.n_classes)
+            [nn.Conv2d(1, self.config.num_filters, (k, self.config.embedding_output_dim)) for k in self.config.filter_sizes])
+        self.dropout = nn.Dropout(self.config.dropout_rate)
+        self.out = self._make_output_layer(self.config.num_filters * len(self.config.filter_sizes))
 
     def forward(self, inputs):
         input_ids = inputs["text"]
@@ -78,7 +71,7 @@ class Model(BaseModel):
         concated = torch.cat(input_ids, 1)
 
         concated = self.dropout(concated) # (N,len(Ks)*Co)
-        out = self.fc(concated)
+        out = self.out(concated)
         return out
 
     def init_weights(self, pretrained_word_vectors=None, is_static=False):

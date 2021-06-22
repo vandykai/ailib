@@ -54,17 +54,17 @@ class Model(BaseModel):
                               batch_first=True, num_layers=config.num_layers,dropout=config.dropout,
                               bidirectional=config.bidirectional)
         self.dropout = SpatialDropout(config.dropout)
-        self.hidden_input_size = config.hidden_size * 2 if config.bidirectional else config.hidden_size
-        self.layer_norm = LayerNorm(self.hidden_input_size)
-        self.classifier = nn.Linear(self.hidden_input_size, self.tagset_size)
+        self.bilstm_output_size = config.hidden_size * 2 if config.bidirectional else config.hidden_size
+        self.layer_norm = LayerNorm(self.bilstm_output_size)
+        self.classifier = nn.Linear(self.bilstm_output_size, self.tagset_size)
         self.crf = CRF(self.START_TAG_ID, self.STOP_TAG_ID, tagset_size=self.tagset_size)
 
     def forward(self, inputs_ids):
         embs = self.embedding(inputs_ids)
         embs = self.dropout(embs)
-        seqence_output, _ = self.bilstm(embs)
-        seqence_output= self.layer_norm(seqence_output)
-        features = self.classifier(seqence_output)
+        sequence_output, _ = self.bilstm(embs)
+        sequence_output= self.layer_norm(sequence_output)
+        features = self.classifier(sequence_output)
         return features
 
     def loss(self, input_ids, input_lens, input_tags):

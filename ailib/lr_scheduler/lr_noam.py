@@ -13,10 +13,10 @@ class NoamLR(object):
         >>>         optimizer.zero_grad()
         >>>         loss.backward()
         >>>         optimizer.step()
-        >>>         scheduler.batch_step(global_step)
+        >>>         scheduler.batch_step(None, global_step)
         >>>     validate(...)
     '''
-    def __init__(self,d_model,factor,warm_up,optimizer):
+    def __init__(self, d_model, factor, warm_up, optimizer):
         if not isinstance(optimizer, Optimizer):
             raise TypeError('{} is not an Optimizer'.format(
                 type(optimizer).__name__))
@@ -26,16 +26,16 @@ class NoamLR(object):
         self.d_model = d_model
         self._lr = 0
 
-    def get_lr(self,step):
-        lr = self.factor * (self.d_model ** (-0.5) * min(step ** (-0.5),step * self.warm_up ** (-1.5)))
+    def get_lr(self, training_step):
+        lr = self.factor * (self.d_model ** (-0.5) * min(training_step ** (-0.5),training_step * self.warm_up ** (-1.5)))
         return lr
 
-    def batch_step(self,step):
+    def batch_step(self, metrics, training_step=None):
         '''
         update parameters and rate
         :return:
         '''
-        lr = self.get_lr(step)
+        lr = self.get_lr(training_step)
         for p in self.optimizer.param_groups:
             p['lr'] = lr
         self._lr = lr

@@ -3,18 +3,43 @@ import torch.nn.functional as F
 from torch import nn
 from transformers import AlbertModel
 from ailib.models.base_model import BaseModel
+from ailib.models.base_model_param import BaseModelParam
+from ailib.param.param import Param
+from ailib.param import hyper_spaces
+from ailib.tools.utils_name_parse import parse_activation
 
-class ModelConfig():
-    """配置参数"""
-    def __init__(self):
-        self.model_name = "HierarchicalAlbert-tiny"
-        self.dropout = 0.5
-        self.num_filters = 64
-        self.max_sentence_length = 128
-        self.max_doc_length = 16
-        self.pretrained_model_path = "albert_chinese_tiny"
-        self.n_classes = 0
-        self.learning_rate = 3e-5
+# class ModelConfig():
+#     """配置参数"""
+#     def __init__(self):
+#         self.model_name = "HierarchicalAlbert-tiny"
+#         self.dropout = 0.5
+#         self.num_filters = 64
+#         self.max_sentence_length = 128
+#         self.max_doc_length = 16
+#         self.pretrained_model_path = "albert_chinese_tiny"
+#         self.n_classes = 0
+#         self.learning_rate = 3e-5
+
+class ModelParam(BaseModelParam):
+
+    def __init__(self, with_embedding=False, with_multi_layer_perceptron=False):
+        super().__init__(with_embedding, with_multi_layer_perceptron)
+        self['model_name'] = "HierarchicalAlbert-tiny"
+        self['learning_rate'] = 3e-5
+        self.add(Param(name='num_filters', value=64,
+                        desc="The number of convolution kernel."))
+        self.add(Param(name='max_sentence_length', value=128,
+                        desc="max length for each sentence."))
+        self.add(Param(name='max_doc_length', value=64,
+                        desc='max number of sentences for each doc'))
+        self.add(Param(name='pretrained_model_path', value='albert_chinese_tiny',
+                        desc='the path or name of the pretrain albert chinese tiny model'))
+        self.add(Param(
+            'dropout_rate', 0.0,
+            hyper_space=hyper_spaces.quniform(
+                low=0.0, high=0.8, q=0.01),
+            desc="The dropout rate."
+        ))
 
 class Model(BaseModel):
 
@@ -24,25 +49,31 @@ class Model(BaseModel):
         self.input_channel = 1
         self.ks = 3 # There are three conv nets here
         self.sentence_encoder = AlbertModel.from_pretrained(
-            config.pretrained_model_path, num_labels=config.n_classes)
+            config.pretrained_model_path, num_labels=config.task.num_classes)
         self.conv1 = nn.Conv2d(self.input_channel, config.num_filters, (3, self.sentence_encoder.config.hidden_size), padding=(2, 0))
         self.conv2 = nn.Conv2d(self.input_channel, config.num_filters, (4, self.sentence_encoder.config.hidden_size), padding=(3, 0))
         self.conv3 = nn.Conv2d(self.input_channel, config.num_filters, (5, self.sentence_encoder.config.hidden_size), padding=(4, 0))
-        self.dropout = nn.Dropout(config.dropout)
-        self.fc = nn.Linear(self.ks * config.num_filters, config.n_classes)
+        self.dropout = nn.Dropout(config.dropout_rate)
+        self.out = self._make_output_layer(self.ks * config.num_filters)
+        #self.fc = nn.Linear(self.ks * config.num_filters, config.n_classes)
 
-    def forward(self, input_ids, segment_ids=None, input_mask=None):
+    def forward(self, inputs):
         """
         a batch is a tensor of shape [batch_size, #file_in_commit, #line_in_file]
         and each element is a line, i.e., a bert_batch,
         which consists of input_ids, input_mask, segment_ids, label_ids
         """
+        input_ids, doc_len, sentence_len_list = inputs["doc"] # (batch_size, sentences, words)
+        attention_mask = torch.tensor([[[1]*length+[0]*(input_ids.shape[2]-length) for length in sentence_len] for sentence_len in sentence_len_list], device=input_ids.device)
+        token_type_ids = torch.zeros_like(input_ids, device=input_ids.device)
+
         input_ids = input_ids.permute(1, 0, 2)  # (sentences, batch_size, words)
-        segment_ids = segment_ids.permute(1, 0, 2)
-        input_mask = input_mask.permute(1, 0, 2)
+        attention_mask = attention_mask.permute(1, 0, 2)
+        token_type_ids = token_type_ids.permute(1, 0, 2)
+
         x_encoded = []
         for i in range(len(input_ids)):
-            x_encoded.append(self.sentence_encoder(input_ids[i], input_mask[i], segment_ids[i])[1])
+            x_encoded.append(self.sentence_encoder(input_ids[i], attention_mask[i], token_type_ids[i])[1])
 
         x = torch.stack(x_encoded)  # (sentences, batch_size, hidden_size)
         x = x.permute(1, 0, 2)  # (batch_size, sentences, hidden_size)
@@ -55,7 +86,7 @@ class Model(BaseModel):
         x = torch.cat(x, 1)  # (batch_size, channel_output * ks)
 
         x = self.dropout(x)
-        x = self.fc(x)  # (batch_size, n_classes)
+        x = self.out(x)  # (batch_size, n_classes)
 
         return x
 

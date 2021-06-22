@@ -12,6 +12,9 @@ class RecallMultiLabel(ClassificationMultiLabelMetric):
         """:class:`Recall` constructor."""
         super().__init__()
         self.threshold = threshold
+        self.reset()
+
+    def reset(self):
         self.recalls = []
 
     def __repr__(self) -> str:

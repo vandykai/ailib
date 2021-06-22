@@ -1,9 +1,9 @@
 """Ranking task."""
 
-from matchzoo.engine import base_task
+from ailib.tasks.base_task import BaseTask
+from ailib.metrics.metrics_rank import *
 
-
-class RankingTask(base_task.BaseTask):
+class RankingTask(BaseTask):
     """Ranking Task.
 
     Examples:

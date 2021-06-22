@@ -1,7 +1,7 @@
 """Classification task."""
 
 from ailib.tasks.base_task import BaseTask
-
+from ailib.metrics.metrics_cls import *
 
 class ClassificationTask(BaseTask):
     """Classification task.

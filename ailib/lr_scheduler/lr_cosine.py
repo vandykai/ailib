@@ -102,7 +102,7 @@ class CosineLRWithRestarts(object):
         self.iteration = 0
         self.batch_increments = list(np.linspace(0, 1, batches_in_epoch))
 
-    def batch_step(self):
+    def batch_step(self, metrics, training_step=None):
         self.last_epoch += 1
         self.t_epoch += 1
         self._set_batch_increment()

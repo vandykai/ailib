@@ -5,7 +5,7 @@ from itertools import count
 from pathlib import Path
 from ailib.tools.utils_persistence import save_model, load_model, save_dill
 
-logger = logging.getLogger()
+logger = logging.getLogger('__ailib__')
 
 class TrainConfig():
     def __init__(self, model_config):

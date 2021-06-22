@@ -3,7 +3,7 @@ import numpy as np
 from ailib.metrics.metrics_rank.discounted_cumulative_gain import DiscountedCumulativeGain
 from ailib.metrics.base_metric import RankingMetric
 
-class NormalizedDiscountedCumulativeGain(object):
+class NormalizedDiscountedCumulativeGain(RankingMetric):
     """Normalized discounted cumulative gain metric."""
 
     ALIAS = ['normalized_discounted_cumulative_gain', 'ndcg']

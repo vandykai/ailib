@@ -11,6 +11,5 @@ __all__ = [
     'DiscountedCumulativeGain',
     'MeanReciprocalRank',
     'MeanAveragePrecision',
-    'NormalizedDiscountedCumulativeGain',
-    'CrossEntropy'
+    'NormalizedDiscountedCumulativeGain'
 ]

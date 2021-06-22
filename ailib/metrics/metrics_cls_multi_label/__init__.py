@@ -5,7 +5,9 @@ from .cross_entropy import CrossEntropy
 from .classification_score import ClassificationMultiLabelScore
 
 __all__ = [
-    'AccuracyMultiLabel',
+    'PrecisionMultiLabel',
+    'RecallMultiLabel',
+    'JaccardMultiLabel',
     'CrossEntropy',
     'ClassificationMultiLabelScore'
 ]

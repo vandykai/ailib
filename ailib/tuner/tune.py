@@ -1,17 +1,18 @@
 import typing
-
 import numpy as np
 
-import matchzoo as mz
-from matchzoo.engine.base_metric import BaseMetric
+from collections import Iterable
+from ailib.param import ParamTable
+from ailib.metrics.base_metric import BaseMetric
+from ailib.models.base_model import BaseModel
 from .tuner import Tuner
 
-
 def tune(
-    params: 'mz.ParamTable',
+    params: 'ParamTable',
+    model_class: BaseModel,
     optimizer: str = 'adam',
-    trainloader: mz.dataloader.DataLoader = None,
-    validloader: mz.dataloader.DataLoader = None,
+    trainloader: Iterable = None,
+    validloader: Iterable = None,
     embedding: np.ndarray = None,
     fit_kwargs: dict = None,
     metric: typing.Union[str, BaseMetric] = None,
@@ -89,6 +90,7 @@ def tune(
 
     tuner = Tuner(
         params=params,
+        model_class=model_class,
         optimizer=optimizer,
         trainloader=trainloader,
         validloader=validloader,

@@ -12,6 +12,9 @@ class JaccardMultiLabel(ClassificationMultiLabelMetric):
         """:class:`Jaccard` constructor."""
         super().__init__()
         self.threshold = threshold
+        self.reset()
+
+    def reset(self):
         self.jaccards = []
 
     def __repr__(self) -> str:

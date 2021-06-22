@@ -39,7 +39,6 @@ def get_snippets(prefix=""):
                     data = json.load(f)
                     snippets[file[:-5]] = data
     if prefix in snippets:
-        print("\n".join(snippets[prefix]["body"]))
         return snippets[prefix]
     else:
         prefix_keys = []

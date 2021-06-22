@@ -1,5 +1,7 @@
 from torch.optim.optimizer import Optimizer
 import numpy as np
+import warnings
+import typing
 
 class ReduceLROnPlateau(object):
     """Reduce learning rate when a metric has stopped improving.
@@ -36,7 +38,7 @@ class ReduceLROnPlateau(object):
     """
 
     def __init__(self, optimizer, mode='min', factor=0.1, patience=10,
-                 verbose=0, epsilon=1e-4, cooldown=0, min_lr=0,eps=1e-8):
+                 verbose=0, epsilon=1e-4, cooldown=0, min_lr=0, eps=1e-8):
 
         super(ReduceLROnPlateau, self).__init__()
         if not isinstance(optimizer, Optimizer):
@@ -77,7 +79,24 @@ class ReduceLROnPlateau(object):
     def reset(self):
         self._reset()
 
-    def epoch_step(self, metrics, epoch):
+    def state_dict(self) -> typing.Dict[str, typing.Any]:
+        """A `Trainer` can use this to serialize the state."""
+        return {
+            'best': self.best,
+            'cooldown_counter': self.cooldown_counter,
+            'wait': self.wait
+        }
+
+    def load_state_dict(
+        self,
+        state_dict: typing.Dict[str, typing.Any]
+    ) -> None:
+        """Hydrate a early stopping from a serialized state."""
+        self.best = state_dict["best"]
+        self.cooldown_counter = state_dict["cooldown_counter"]
+        self.wait = state_dict["wait"]
+
+    def epoch_step(self, metrics, epoch=None):
         current = metrics
         if current is None:
             warnings.warn('Learning Rate Plateau Reducing requires metrics available!', RuntimeWarning)
@@ -106,6 +125,7 @@ class ReduceLROnPlateau(object):
     def in_cooldown(self):
         return self.cooldown_counter > 0
 
+
 class ReduceLRWDOnPlateau(ReduceLROnPlateau):
     """Reduce learning rate and weight decay when a metric has stopped
     improving. Models often benefit from reducing the learning rate by
@@ -127,7 +147,7 @@ class ReduceLRWDOnPlateau(ReduceLROnPlateau):
         >>>     # Note that step should be called after validate()
         >>>     scheduler.epoch_step(val_loss)
     """
-    def epoch_step(self, metrics, epoch):
+    def epoch_step(self, metrics, epoch=None):
         current = metrics
         if current is None:
             warnings.warn('Learning Rate Plateau Reducing requires metrics available!', RuntimeWarning)

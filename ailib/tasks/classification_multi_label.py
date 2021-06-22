@@ -1,7 +1,7 @@
 """ClassificationMultiLabel task."""
 
 from ailib.tasks.base_task import BaseTask
-
+from ailib.metrics.metrics_cls_multi_label import *
 
 class ClassificationMultiLabelTask(BaseTask):
     """ClassificationMultiLabel task.

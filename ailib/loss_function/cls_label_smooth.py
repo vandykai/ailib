@@ -8,23 +8,26 @@ class LabelSmoothingLoss(nn.Module):
     KL-divergence between q_{smoothed ground truth prob.}(w)
     and p_{prob. computed by model}(w) is minimized.
     """
-    def __init__(self, smoothing_eps, n_classes, device=None):
-        assert 0.0 < smoothing_eps <= 1.0
+    def __init__(self, smoothing_eps, n_classes, ignore_index=-100, device=None):
+        assert 0.0 <= smoothing_eps <= 1.0
         super().__init__()
-        smoothing_value = smoothing_eps / (n_classes - 1)
-        one_hot = torch.full((n_classes,), smoothing_value, device=device)
-        self.register_buffer('one_hot', one_hot.unsqueeze(0))
+        self.smoothing_value = smoothing_eps / (n_classes - 1)
         self.confidence = 1.0 - smoothing_eps
+        self.ignore_index = ignore_index
+        self.n_classes = n_classes
 
     def forward(self, pred, target):
         """
-        pred (FloatTensor): batch_size x n_classes
-        target (LongTensor): batch_size
+        pred (FloatTensor): [N, C, d1, d2, ..., dk]
+        target (LongTensor): [N, d1, d2, ..., dk]
         """
-        pred = F.log_softmax(pred, dim=-1)
-        model_prob = self.one_hot.repeat(target.size(0), 1)
-        model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
-        return F.kl_div(pred, model_prob, reduction='sum')
+        pred = F.log_softmax(pred, dim=1)
+        model_prob = torch.full_like(pred, self.smoothing_value)
+        model_prob.scatter_(1, target.unsqueeze(1).clamp(0, self.n_classes-1), self.confidence)
+        loss = F.kl_div(pred, model_prob, reduction='none').sum(dim=1)
+        ignore_mask = target.ne(self.ignore_index)
+        loss = loss.masked_select(ignore_mask).mean()  # average later
+        return loss
 
 def single_label_loss(pred, target, trg_pad_idx=-1, smoothing=False):
     ''' Calculate cross entropy loss, apply label smoothing if needed. '''

@@ -18,10 +18,12 @@ class CyclicLR(object):
     '''
     def __init__(self, optimizer, base_lr=1e-3, max_lr=6e-3,
                  step_size=2000, mode='triangular', gamma=1.,
-                 scale_fn=None, scale_mode='cycle', last_batch_iteration=-1):
+                 scale_fn=None, scale_mode='cycle', last_training_step=-1):
+
         if not isinstance(optimizer, Optimizer):
             raise TypeError('{} is not an Optimizer'.format(
                 type(optimizer).__name__))
+
         self.optimizer = optimizer
 
         if isinstance(base_lr, list) or isinstance(base_lr, tuple):
@@ -63,8 +65,8 @@ class CyclicLR(object):
             self.scale_fn = scale_fn
             self.scale_mode = scale_mode
 
-        self.batch_step(last_batch_iteration + 1)
-        self.last_batch_iteration = last_batch_iteration
+        self.batch_step(None, last_training_step + 1)
+        self.last_training_step = last_training_step
 
     def _triangular_scale_fn(self, x):
         return 1.
@@ -77,8 +79,8 @@ class CyclicLR(object):
 
     def get_lr(self):
         step_size = float(self.step_size)
-        cycle = np.floor(1 + self.last_batch_iteration / (2 * step_size))
-        x = np.abs(self.last_batch_iteration / step_size - 2 * cycle + 1)
+        cycle = np.floor(1 + self.last_training_step / (2 * step_size))
+        x = np.abs(self.last_training_step / step_size - 2 * cycle + 1)
 
         lrs = []
         param_lrs = zip(self.optimizer.param_groups, self.base_lrs, self.max_lrs)
@@ -87,13 +89,13 @@ class CyclicLR(object):
             if self.scale_mode == 'cycle':
                 lr = base_lr + base_height * self.scale_fn(cycle)
             else:
-                lr = base_lr + base_height * self.scale_fn(self.last_batch_iteration)
+                lr = base_lr + base_height * self.scale_fn(self.last_training_step)
             lrs.append(lr)
         return lrs
 
-    def batch_step(self, batch_iteration=None):
-        if batch_iteration is None:
-            batch_iteration = self.last_batch_iteration + 1
-        self.last_batch_iteration = batch_iteration
+    def batch_step(self, metrics, training_step=None):
+        if training_step is None:
+            training_step = self.last_training_step + 1
+        self.last_training_step = training_step
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
             param_group['lr'] = lr

@@ -4,7 +4,8 @@ from .cls_fasttext import Model as FastText, ModelConfig as FastTextConfig
 from .cls_rcnn import Model as RCNN, ModelConfig as RCNNConfig
 from .cls_rnn_att import Model as RNNAtt, ModelConfig as RNNAttConfig
 from .cls_rnn import Model as RNN, ModelConfig as RNNConfig
-from .cls_text_cnn import Model as TextCNN, ModelConfig as TextCNNConfig
+from .cls_text_cnn import Model as TextCNN, ModelParam as TextCNNParam
+from .cls_albert_tiny import Model as AlbertTiny, ModelParam as AlbertTinyParam
 
 __all__ = [
     'DPCNN', 'DPCNNConfig',
@@ -13,5 +14,6 @@ __all__ = [
     'RCNN', 'RCNNConfig',
     'RNNAtt', 'RNNAttConfig',
     'RNN', 'RNNConfig',
-    'TextCNN', 'TextCNNConfig',
+    'TextCNN', 'TextCNNParam',
+    'AlbertTiny', 'AlbertTinyParam'
 ]

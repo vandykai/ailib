@@ -19,16 +19,15 @@ class EarlyStopping:
     def __init__(
         self,
         patience: typing.Optional[int] = None,
-        should_decrease: bool = None,
-        key: typing.Any = None
+        should_decrease: bool = False,
     ):
         """Early stopping Constructor."""
         self._patience = patience
-        self._key = key
-        self._best_so_far = 0
+        self._best_so_far = None
         self._epochs_with_no_improvement = 0
         self._is_best_so_far = False
         self._early_stop = False
+        self.should_decrease = should_decrease
 
     def state_dict(self) -> typing.Dict[str, typing.Any]:
         """A `Trainer` can use this to serialize the state."""
@@ -50,10 +49,9 @@ class EarlyStopping:
         self._epochs_with_no_improvement = \
             state_dict["epochs_with_no_improvement"]
 
-    def update(self, result: list):
+    def update(self, score):
         """Call function."""
-        score = result[self._key]
-        if score > self._best_so_far:
+        if self._best_so_far is None or (score < self._best_so_far if self.should_decrease else score > self._best_so_far):
             self._best_so_far = score
             self._is_best_so_far = True
             self._epochs_with_no_improvement = 0

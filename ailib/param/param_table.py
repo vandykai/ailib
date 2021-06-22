@@ -77,10 +77,10 @@ class ParamTable(object):
         :return: A `pandas.DataFrame`.
 
         Example:
-            >>> import matchzoo as mz
-            >>> table = mz.ParamTable()
-            >>> table.add(mz.Param(name='x', value=10, desc='my x'))
-            >>> table.add(mz.Param(name='y', value=20, desc='my y'))
+            >>> from ailib.param import ParamTable, Param
+            >>> table = ParamTable()
+            >>> table.add(Param(name='x', value=10, desc='my x'))
+            >>> table.add(Param(name='y', value=20, desc='my y'))
             >>> table.to_frame()
               Name Description  Value Hyper-Space
             0    x        my x     10        None
@@ -123,7 +123,7 @@ class ParamTable(object):
         """:return: A iterator that iterates over all parameter instances."""
         yield from self._params.values()
 
-    def completed(self, exclude: typing.Optional[list] = None) -> bool:
+    def completed(self, exclude: typing.Optional[list] = []) -> bool:
         """
         Check if all params are filled.
 
@@ -134,11 +134,10 @@ class ParamTable(object):
 
         Example:
 
-            >>> import matchzoo
-            >>> model = matchzoo.models.DenseBaseline()
-            >>> model.params.completed(
-            ...     exclude=['task', 'out_activation_func', 'embedding',
-            ...              'embedding_input_dim', 'embedding_output_dim']
+            >>> from ailib.models.doc_cls.cls_hierarchical_albert_tiny ModelParam
+            >>> model_param = ModelParam()
+            >>> model_param.completed(
+            ...     exclude=['task', 'out_activation_func']
             ... )
             True
 
@@ -166,11 +165,13 @@ class ParamTable(object):
         :param other: The dictionary used update.
 
         Example:
-            >>> import matchzoo as mz
-            >>> model = mz.models.DenseBaseline()
-            >>> prpr = model.get_default_preprocessor()
-            >>> _ = prpr.fit(mz.datasets.toy.load_data(), verbose=0)
-            >>> model.params.update(prpr.context)
+            >>> from ailib.preprocessors.basic_preprocessor import BasicPreprocessor
+            >>> from ailib.models.doc_cls.cls_hierarchical_albert_tiny ModelParam
+            >>> prpr = BasicPreprocessor(ngram_size=2, filter_mode='idf', filter_low_freq=2, filter_high_freq=5)
+            >>> model_param = ModelParam()
+            >>> data_pack = DataPack(relation, left, right)
+            >>> _ = prpr.fit(data_pack, verbose=0)
+            >>> model_param.update(prpr.context)
 
         """
         for key in other:

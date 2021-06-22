@@ -12,6 +12,9 @@ class PrecisionMultiLabel(ClassificationMultiLabelMetric):
         """:class:`Precision` constructor."""
         super().__init__()
         self.threshold = threshold
+        self.reset()
+
+    def reset(self):
         self.precisions = []
 
     def __repr__(self) -> str:

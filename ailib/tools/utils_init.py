@@ -3,7 +3,7 @@ import logging
 import torch.nn.init as init
 import torch.nn as nn
 
-def init_logger(log_file=None, log_file_level=logging.NOTSET):
+def init_logger(log_file=None, log_file_level=logging.NOTSET, logger_name='__ailib__'):
     '''
     Example:
         >>> init_logger(log_file)
@@ -14,7 +14,7 @@ def init_logger(log_file=None, log_file_level=logging.NOTSET):
     log_format = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                                    datefmt='%m/%d/%Y %H:%M:%S')
 
-    logger = logging.getLogger()
+    logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(log_format)

@@ -20,8 +20,9 @@ from ailib.meters import AverageMeter
 from ailib.tools.utils_time import Timer
 from ailib.tools.utils_init import init_logger
 from ailib.strategy import EarlyStopping
+from ailib.tools.utils_statistic import grad_norm
 
-logger = logging.getLogger()
+logger = logging.getLogger('__ailib__')
 
 class Trainer:
     """
@@ -70,11 +71,14 @@ class Trainer:
         scheduler: typing.Any = None,
         clip_norm: typing.Union[float, int] = None,
         patience: typing.Optional[int] = None,
+        should_decrease: bool = False,
         key: typing.Any = None,
         checkpoint: typing.Union[str, Path] = None,
         save_dir: typing.Union[str, Path] = None,
         save_all: bool = False,
         verbose: int = 1,
+        loss_proxy: callable = None,
+        metric_proxy: callable = None,
         **kwargs
     ):
         """Base Trainer constructor."""
@@ -87,16 +91,24 @@ class Trainer:
         self._criterions = self._task.losses
 
         if not key:
-            key = self._task.metrics[0]
-        self._early_stopping = EarlyStopping(patience=patience, key=key)
+            self._key = str(self._task.metrics[0])
+        else:
+            self._key = key
+        self._early_stopping = EarlyStopping(patience=patience, should_decrease=should_decrease)
 
         self._start_epoch = start_epoch
+        self._epoch = start_epoch
         self._epochs = epochs
         self._iteration = 0
         self._verbose = verbose
         self._save_all = save_all
+        self._loss_proxy = loss_proxy
+        self._metric_proxy = metric_proxy
         self._last_result = None
         self._load_path(checkpoint, save_dir)
+        self._train_loss_meter = AverageMeter()
+        self._valid_loss_meter = AverageMeter()
+        self._grad_norm_meter = AverageMeter()
 
     def _load_dataloader(
         self,
@@ -133,27 +145,27 @@ class Trainer:
             if None, use the current device. If `torch.device` or int,
             use device specified by user. If list, use data parallel.
         """
-        if not isinstance(model, BaseModel):
-            raise ValueError(
-                'model should be a `BaseModel` instance.'
-                f' But got {type(model)}.'
-            )
+        # if not isinstance(model, BaseModel):
+        #     raise ValueError(
+        #         'model should be a `BaseModel` instance.'
+        #         f' But got {type(model)}.'
+        #     )
 
         self._task = model.config.task
         self._data_parallel = False
         self._model = model
         self._model_name = model.config.model_name
-
         if isinstance(device, list) and len(device):
             self._data_parallel = True
             self._model = torch.nn.DataParallel(self._model, device_ids=device)
             self._device = device[0]
         else:
-            if not (isinstance(device, torch.device) or isinstance(device, int)):
+            if not (isinstance(device, torch.device) or isinstance(device, int) or isinstance(device, str)):
                 device = torch.device(
                     "cuda" if torch.cuda.is_available() else "cpu")
             self._device = device
-
+        if isinstance(self._device, int):
+            self._device = torch.device(f"cuda:{self._device}")
         self._model.to(self._device)
 
     def _load_path(
@@ -198,10 +210,15 @@ class Trainer:
             )
         self._optimizer.step()
 
-    def _run_scheduler(self):
+    def _run_scheduler(self, metrics, step, type=''):
         """Run scheduler."""
         if self._scheduler:
-            self._scheduler.step()
+            if type=='batch_step' and hasattr(self._scheduler, "batch_step"):
+                self._scheduler.batch_step(metrics, step)
+            elif type=='epoch_step' and hasattr(self._scheduler, "epoch_step"):
+                self._scheduler.epoch_step(metrics, step)
+            elif type=='epoch_step' and hasattr(self._scheduler, "step"):
+                self._scheduler.step(metrics, step)
 
     def run(self):
         """
@@ -214,13 +231,27 @@ class Trainer:
         self._model.train()
         timer = Timer()
         for epoch in range(self._start_epoch, self._epochs + 1):
-            self._epoch = epoch
             self._run_epoch()
-            self._run_scheduler()
+            self._epoch += 1
+            self.save("trainer_latest.pt")
             if self._early_stopping.should_stop_early:
                 break
         if self._verbose:
             tqdm.write(f'Cost time: {timer.time}s')
+
+    def _caculate_loss(self, inputs, outputs, targets):
+        # Caculate all losses and sum them up
+        if self._loss_proxy:
+            loss = torch.sum(
+                *[self._loss_proxy(c, inputs, outputs, targets) for c in self._criterions]
+            )
+        elif hasattr(self._model,'loss'):
+            loss = self._model.loss(inputs, outputs, targets)
+        else:
+            loss = torch.sum(
+                *[c(outputs, targets["target"]) for c in self._criterions]
+            )
+        return loss
 
     def _run_epoch(self):
         """
@@ -236,18 +267,17 @@ class Trainer:
         """
         # Get total number of batch
         num_batch = len(self._trainloader)
-        train_loss = AverageMeter()
         with tqdm(enumerate(self._trainloader), total=num_batch,
                   disable=not self._verbose) as pbar:
-            for step, (inputs, target) in pbar:
+            for step, (inputs, targets) in pbar:
                 outputs = self._model(inputs)
                 # Caculate all losses and sum them up
-                loss = torch.sum(
-                    *[c(inputs["index"], outputs, target["label"]) for c in self._criterions]
-                )
+                loss = self._caculate_loss(inputs, outputs, targets)
                 self._backward(loss)
-                train_loss.update(loss.item())
-
+                self._train_loss_meter.update(loss.item())
+                self._grad_norm_meter.update(grad_norm(self._model.parameters()))
+                # batch lr scheduler
+                self._run_scheduler(metrics=loss.item(), step=self._iteration, type='batch_step')
                 # Set progress bar
                 pbar.set_description(f'Epoch {self._epoch}/{self._epochs}')
                 pbar.set_postfix(loss=f'{loss.item():.3f}')
@@ -261,23 +291,27 @@ class Trainer:
                         Path(self._save_dir).mkdir(parents=True)
                         init_logger(self._save_dir.joinpath('train.log'))
                     if self._verbose:
-                        logger.info(
-                            f'[Epoch-{self._epoch}/{self._epochs} '
-                            f'Iter-{self._iteration} '
-                            f'Loss-{train_loss.avg:.3f}]:')
+                        logger.info({
+                            "Epoch": self._epoch/self._epochs,
+                            "Iter": self._iteration,
+                            "GradNorm": f'{self._grad_norm_meter.avg:.3f}',
+                            "Loss":f'{self._train_loss_meter.avg:.3f}'
+                            })
                     self._last_result = self.evaluate(self._validloader)
                     if self._verbose:
-                        logger.info('  Validation: ' + ' - '.join(
-                            f'{k}: {v}' for k, v in self._last_result.items()))
+                        logger.info({'validation':{k: v for k, v in self._last_result.items()}})
                     # Early stopping
-                    self._early_stopping.update(self._last_result)
+                    self._early_stopping.update(self._last_result[self._key])
+                    # epoch lr scheduler
+                    self._run_scheduler(metrics=self._last_result[self._key], step=self._epoch, type='epoch_step')
                     if self._early_stopping.should_stop_early:
-                        self._save()
                         logger.info('Ran out of patience. Stop training...')
                         break
                     elif self._early_stopping.is_best_so_far:
                         logger.info(f"Epoch {self._epoch}/{self._epochs}: best valid value improved to {self._early_stopping.best_so_far}")
                         self._save()
+                    self._train_loss_meter.reset()
+                    self._grad_norm_meter.reset()
 
     def evaluate(
         self,
@@ -292,18 +326,29 @@ class Trainer:
         result = dict()
         # Get total number of batch
         num_batch = len(dataloader)
+        for metric in self._task.metrics:
+            metric.reset()
         with torch.no_grad():
             self._model.eval()
             with tqdm(enumerate(dataloader), total=num_batch,
                   disable=not self._verbose) as pbar:
-                for step, (inputs, target) in pbar:
-                    outputs = self._model(inputs).detach().cpu()
-                    for metric in self._task.metrics:
-                        metric.update(target["label"].detach().cpu().numpy().tolist(), outputs.numpy().tolist())
+                for step, (inputs, targets) in pbar:
+                    outputs = self._model(inputs)
+                    loss = self._caculate_loss(inputs, outputs, targets)
+                    outputs = outputs.detach().cpu()
+                    self._valid_loss_meter.update(loss.item())
+                    if self._metric_proxy:
+                        for metric in self._task.metrics:
+                            metric.update(*self._metric_proxy(inputs, targets, outputs))
+                    else:
+                        for metric in self._task.metrics:
+                            metric.update(targets["target"].detach().cpu().numpy().tolist(), outputs.numpy().tolist())
             self._model.train()
 
         for metric in self._task.metrics:
-            result[metric] = metric.result()
+            result[str(metric)] = metric.result()
+        result['loss'] = self._valid_loss_meter.avg
+        self._valid_loss_meter.reset()
         return result
 
     @classmethod
@@ -338,7 +383,7 @@ class Trainer:
         ).mean()
         return val
 
-    def predict(
+    def predicts(
         self,
         dataloader: Iterable
     ) -> np.array:
@@ -349,32 +394,59 @@ class Trainer:
         :return: predictions
 
         """
+        # Get total number of batch
+        num_batch = len(dataloader)
         with torch.no_grad():
             self._model.eval()
             predictions = []
-            for batch in dataloader:
-                inputs = batch[0]
-                outputs = self._model(inputs).detach().cpu()
-                predictions.append(outputs)
+            targets = []
+            with tqdm(enumerate(dataloader), total=num_batch,
+                disable=not self._verbose) as pbar:
+                for step, (inputs, target) in pbar:
+                    outputs = self._model(inputs).detach().cpu()
+                    target = target.detach().cpu()
+                    predictions.append(outputs)
+                    targets.append(target)
             self._model.train()
-            return torch.cat(predictions, dim=0).numpy()
+            return targets, predictions
+
+    def predict(
+        self,
+        inputs
+    ) -> torch.Tensor:
+        """
+        Generate output prediction for the input samples.
+
+        :param dataloader: model inputs
+        :return: prediction
+
+        """
+        with torch.no_grad():
+            self._model.eval()
+            outputs = self._model(inputs).detach().cpu()
+            self._model.train()
+            return outputs
 
     def _save(self):
         """Save."""
         if self._save_all:
-            self.save()
+            self.save("trainer.pt")
         else:
-            self.save_model()
+            self.save_model("model.pt")
 
-    def save_model(self):
+    def save_model(self, file_name):
         """Save the model."""
-        checkpoint = self._save_dir.joinpath('model.pt')
+        checkpoint = self._save_dir.joinpath(file_name)
         if self._data_parallel:
-            torch.save(self._model.module.state_dict(), checkpoint)
+            model = self._model.module
         else:
-            torch.save(self._model.state_dict(), checkpoint)
+            model = self._model
+        state_dict = model.state_dict()
+        for key in state_dict:
+            state_dict[key] = state_dict[key].cpu()
+        torch.save(state_dict, checkpoint)
 
-    def save(self):
+    def save(self, file_name):
         """
         Save the trainer.
 
@@ -384,14 +456,20 @@ class Trainer:
         :param path: Path to save trainer.
 
         """
-        checkpoint = self._save_dir.joinpath('trainer.pt')
+        if not Path(self._save_dir).exists():
+            Path(self._save_dir).mkdir(parents=True)
+            init_logger(self._save_dir.joinpath('train.log'))
+        checkpoint = self._save_dir.joinpath(file_name)
         if self._data_parallel:
-            model = self._model.module.state_dict()
+            model = self._model.module
         else:
-            model = self._model.state_dict()
+            model = self._model
+        state_dict = model.state_dict()
+        for key in state_dict:
+            state_dict[key] = state_dict[key].cpu()
         state = {
             'epoch': self._epoch,
-            'model': model,
+            'model': state_dict,
             'optimizer': self._optimizer.state_dict(),
             'early_stopping': self._early_stopping.state_dict(),
             'last_result': self._last_result
@@ -400,7 +478,7 @@ class Trainer:
             state['scheduler'] = self._scheduler.state_dict()
         torch.save(state, checkpoint)
 
-    def restore_model(self, checkpoint: typing.Union[str, Path]):
+    def restore_model(self, checkpoint: typing.Union[str, Path], strict=True):
         """
         Restore model.
 
@@ -409,11 +487,11 @@ class Trainer:
         """
         state = torch.load(checkpoint, map_location=self._device)
         if self._data_parallel:
-            self._model.module.load_state_dict(state)
+            self._model.module.load_state_dict(state, strict)
         else:
-            self._model.load_state_dict(state)
+            self._model.load_state_dict(state, strict)
 
-    def restore(self, checkpoint: typing.Union[str, Path] = None):
+    def restore(self, checkpoint: typing.Union[str, Path] = None, strict=True):
         """
         Restore trainer.
 
@@ -422,11 +500,12 @@ class Trainer:
         """
         state = torch.load(checkpoint, map_location=self._device)
         if self._data_parallel:
-            self._model.module.load_state_dict(state['model'])
+            self._model.module.load_state_dict(state['model'], strict)
         else:
-            self._model.load_state_dict(state['model'])
+            self._model.load_state_dict(state['model'], strict)
         self._optimizer.load_state_dict(state['optimizer'])
         self._start_epoch = state['epoch'] + 1
+        self._epoch = state['epoch'] + 1
         self._early_stopping.load_state_dict(state['early_stopping'])
         self._last_result = state['last_result']
         if self._scheduler:

@@ -13,7 +13,7 @@ from ailib.meter.meter_recoder import RecoderMeter
 from ailib.metrics.metrics_cls import ClassificationScore
 from ailib.tools.utils_persistence import save_model, load_model
 
-logger = logging.getLogger()
+logger = logging.getLogger('__ailib__')
 
 def evaluate(config, model, dev_iter, device):
     loss_func = nn.CrossEntropyLoss()

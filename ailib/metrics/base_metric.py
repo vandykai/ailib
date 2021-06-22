@@ -11,6 +11,9 @@ class BaseMetric(abc.ABC):
     ALIAS = 'base_metric'
 
     def __init__(self):
+        self.reset()
+
+    def reset(self):
         self.y_trues = []
         self.y_preds = []
 
@@ -28,7 +31,7 @@ class BaseMetric(abc.ABC):
         self.y_trues.append(y_true)
         self.y_preds.append(y_pred)
 
-    def result():
+    def result(self):
         y_true = [ex for item in self.y_trues for ex in item]
         y_pred = [ex for item in self.y_preds for ex in item]
         return self(y_true, y_pred)
@@ -53,17 +56,16 @@ class RankingMetric(BaseMetric):
 
 
 class ClassificationMetric(BaseMetric):
-    """Rangking metric base class."""
+    """Classification metric base class."""
 
     ALIAS = 'classification_metric'
 
 class ClassificationMultiLabelMetric(BaseMetric):
-    """Rangking metric base class."""
+    """Classification MultiLabel metric base class."""
 
     ALIAS = 'classification_multi_label_metric'
 
+class RegressionMetric(BaseMetric):
+    """Regression metric base class."""
 
-def sort_and_couple(labels: np.array, scores: np.array) -> np.array:
-    """Zip the `labels` with `scores` into a single list."""
-    couple = list(zip(labels, scores))
-    return np.array(sorted(couple, key=lambda x: x[1], reverse=True))
+    ALIAS = 'regression_metric'

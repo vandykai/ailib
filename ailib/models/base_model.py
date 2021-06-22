@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 import numpy as np
 from ailib import tasks
@@ -18,9 +19,6 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     def init_weights(self):
-        raise NotImplementedError
-
-    def loss_function(self):
         raise NotImplementedError
 
     def optimizer(self):
@@ -49,9 +47,9 @@ class BaseModel(nn.Module):
     ) -> nn.Module:
         """:return: a correctly shaped torch module for model output."""
         task = self.config.task
-        if isinstance(task, tasks.Classification):
+        if isinstance(task, (tasks.ClassificationTask, tasks.ClassificationMultiLabelTask)):
             out_features = task.num_classes
-        elif isinstance(task, tasks.Ranking):
+        elif isinstance(task, tasks.RankingTask):
             out_features = 1
         else:
             raise ValueError(f"{task} is not a valid task type. "

@@ -28,8 +28,9 @@ class ELRMultiLabelLoss(nn.Module):
         y_pred = output.sigmoid()
         y_pred = torch.clamp(y_pred, 1e-4, 1.0-1e-4)
         y_pred_ = y_pred.data.detach()
-        self.target[index] = self.beta * self.target[index] + (1-self.beta) * (y_pred_/y_pred_.sum(dim=1,keepdim=True))
+        #self.target[index] = self.beta * self.target[index] + (1-self.beta) * (y_pred_/y_pred_.sum(dim=1,keepdim=True))
+        self.target[index] = self.beta * self.target[index] + (1-self.beta) * y_pred_
         ce_loss = F.binary_cross_entropy(output.sigmoid(), label)
         elr_reg = ((1-(self.target[index] * y_pred)).sum(dim=1).log()).mean()
-        final_loss = ce_loss +  self.lambda_ *elr_reg
+        final_loss = ce_loss +  self.lambda_ * elr_reg
         return final_loss

@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch import optim
 
-from ailib.metrics.base_metric import BaseMetric, RankingMetric, ClassificationMetric, ClassificationMultiLabelMetric
+from ailib.metrics.base_metric import *
 
 
 activation = nn.ModuleDict([
@@ -233,9 +233,11 @@ def parse_metric(
         return _parse_metric(metric, ClassificationMetric)
     if task == 'classification_multi_label':
         return _parse_metric(metric, ClassificationMultiLabelMetric)
+    if task == 'regression':
+        return _parse_metric(metric, RegressionMetric)
     else:
         raise ValueError(
-            'Should be a [ranking, classification, classification_multi_label] task.'
+            'Should be a [ranking, classification, classification_multi_label, regression] task.'
         )
 
 

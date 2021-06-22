@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Iterable
 
-logger = logging.getLogger()
+logger = logging.getLogger('__ailib__')
 
 def set_freeze_by_names(model, layer_names, freeze=True):
     if not isinstance(layer_names, Iterable):

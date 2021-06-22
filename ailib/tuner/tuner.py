@@ -8,12 +8,12 @@ import hyperopt
 import numpy as np
 
 from ailib.trainers import Trainer
-from ailib.params import ParamTable
+from ailib.param import ParamTable
 from ailib.metrics.base_metric import BaseMetric
 from ailib.tools.utils_name_parse import parse_optimizer
 from ailib.models.base_model import BaseModel
 
-logger = logging.getLogger()
+logger = logging.getLogger('__ailib__')
 class Tuner(object):
     """
     Model hyper-parameters tuner.
@@ -66,7 +66,7 @@ class Tuner(object):
         if fit_kwargs is None:
             fit_kwargs = dict(epochs=5, verbose=0)
 
-        if 'with_embedding' in params:
+        if embedding and 'with_embedding' in params:
             params['embedding'] = embedding
             params['embedding_input_dim'] = embedding.shape[0]
             params['embedding_output_dim'] = embedding.shape[1]
@@ -158,7 +158,7 @@ class Tuner(object):
         trainer.run()
 
         lookup = trainer.evaluate(self._validloader)
-        score = lookup[self._metric]
+        score = lookup[str(self._metric)]
 
         # collect result
         # this result is for users, visible outside
@@ -196,7 +196,7 @@ class Tuner(object):
         logger.info(f"Run #{result['#']}")
         logger.info(f"Score: {result['score']}")
         logger.info(result['params'])
-        logger.info()
+        logger.info("")
 
     @property
     def params(self):
@@ -292,7 +292,7 @@ class Tuner(object):
             raise TypeError("Only accepts a `ParamTable` instance.")
         if not params.hyper_space:
             raise ValueError("Parameter hyper-space empty.")
-        if not params.completed(exclude=['out_activation_func']):
+        if not params.completed(exclude=['out_activation_func', 'embedding']):
             raise ValueError("Parameters not complete.")
 
     @classmethod

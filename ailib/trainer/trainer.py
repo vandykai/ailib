@@ -14,7 +14,7 @@ from ailib.meters.meter_recoder import RecoderMeter
 from ailib.metrics.metrics_cls import ClassificationScore
 from ailib.tools.utils_persistence import save_model, load_model, save_dill
 
-logger = logging.getLogger()
+logger = logging.getLogger('__ailib__')
 
 def evaluate(train_manager, dev_iter, input_handler=None):
     train_config = train_manager.config

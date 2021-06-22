@@ -17,9 +17,9 @@ class HyperoptProxy(object):
 
         A hyper space in `hyperopt` requires a `label` to instantiate. This
         `label` is used later as a reference to original hyper space that is
-        sampled. In `matchzoo`, hyper spaces are used in
-        :class:`matchzoo.engine.Param`. Only if a hyper space's label
-        matches its parent :class:`matchzoo.engine.Param`'s name, `matchzoo`
+        sampled. Hyper spaces are used in
+        :class:`Param`. Only if a hyper space's label
+        matches its parent :class:`Param`'s name, It
         can correctly back-refrenced the parameter got sampled. This can be
         done by asking the user always use the same name for a parameter and
         its hyper space, but typos can occur. As a result, these wrappers
