@@ -16,7 +16,7 @@ import torch.optim as optim
 from ailib import tasks
 from ailib.models.base_model import BaseModel
 from ailib.metrics.base_metric import BaseMetric
-from ailib.meters import AverageMeter
+from ailib.meters import AverageMeter, RecoderMeter
 from ailib.tools.utils_time import Timer
 from ailib.tools.utils_init import init_logger
 from ailib.strategy import EarlyStopping
@@ -79,6 +79,7 @@ class Trainer:
         verbose: int = 1,
         loss_proxy: callable = None,
         metric_proxy: callable = None,
+        debug: bool = False,
         **kwargs
     ):
         """Base Trainer constructor."""
@@ -104,8 +105,10 @@ class Trainer:
         self._save_all = save_all
         self._loss_proxy = loss_proxy
         self._metric_proxy = metric_proxy
+        self._debug = debug
         self._last_result = None
         self._load_path(checkpoint, save_dir)
+        self._info_meter = RecoderMeter()
         self._train_loss_meter = AverageMeter()
         self._valid_loss_meter = AverageMeter()
         self._grad_norm_meter = AverageMeter()
@@ -202,7 +205,7 @@ class Trainer:
         :param loss: Tensor. Loss of model.
 
         """
-        self._optimizer.zero_grad()
+        self._optimizer.zero_grad(set_to_none=True)
         loss.backward()
         if self._clip_norm:
             nn.utils.clip_grad_norm_(
@@ -228,7 +231,6 @@ class Trainer:
             Run each epoch -> Run scheduler -> Should stop early?
 
         """
-        self._model.train()
         timer = Timer()
         for epoch in range(self._start_epoch, self._epochs + 1):
             self._run_epoch()
@@ -236,9 +238,11 @@ class Trainer:
             self.save("trainer_latest.pt")
             if self._early_stopping.should_stop_early:
                 break
+        logger.info(f"best model path: {self._save_dir.joinpath('model.pt')}")
         if self._verbose:
             tqdm.write(f'Cost time: {timer.time}s')
 
+    # loss is (inputs, outputs, targets) while metric is (inputs, targets, outputs)
     def _caculate_loss(self, inputs, outputs, targets):
         # Caculate all losses and sum them up
         if self._loss_proxy:
@@ -269,13 +273,14 @@ class Trainer:
         num_batch = len(self._trainloader)
         with tqdm(enumerate(self._trainloader), total=num_batch,
                   disable=not self._verbose) as pbar:
+            self._model.train()
             for step, (inputs, targets) in pbar:
                 outputs = self._model(inputs)
                 # Caculate all losses and sum them up
                 loss = self._caculate_loss(inputs, outputs, targets)
                 self._backward(loss)
-                self._train_loss_meter.update(loss.item())
-                self._grad_norm_meter.update(grad_norm(self._model.parameters()))
+                self._info_meter.update("train_loss", loss.item())
+                self._info_meter.update("grad_norm", grad_norm(self._model.parameters()))
                 # batch lr scheduler
                 self._run_scheduler(metrics=loss.item(), step=self._iteration, type='batch_step')
                 # Set progress bar
@@ -292,10 +297,10 @@ class Trainer:
                         init_logger(self._save_dir.joinpath('train.log'))
                     if self._verbose:
                         logger.info({
-                            "Epoch": self._epoch/self._epochs,
+                            "Epoch": f'{self._epoch}/{self._epochs}',
                             "Iter": self._iteration,
-                            "GradNorm": f'{self._grad_norm_meter.avg:.3f}',
-                            "Loss":f'{self._train_loss_meter.avg:.3f}'
+                            "GradNorm": f'{self._info_meter.avg["grad_norm"]:.3f}',
+                            "Loss":f'{self._info_meter.avg["train_loss"]:.3f}'
                             })
                     self._last_result = self.evaluate(self._validloader)
                     if self._verbose:
@@ -305,14 +310,15 @@ class Trainer:
                     # epoch lr scheduler
                     self._run_scheduler(metrics=self._last_result[self._key], step=self._epoch, type='epoch_step')
                     if self._early_stopping.should_stop_early:
-                        logger.info('Ran out of patience. Stop training...')
+                        logger.info(f'Ran out of patience after {self._epoch} epoch. Stop training...')
                         break
                     elif self._early_stopping.is_best_so_far:
                         logger.info(f"Epoch {self._epoch}/{self._epochs}: best valid value improved to {self._early_stopping.best_so_far}")
                         self._save()
-                    self._train_loss_meter.reset()
-                    self._grad_norm_meter.reset()
-
+                    if self._debug:
+                        self._info_meter.reset(keep_history=True)
+                    else:
+                        self._info_meter.reset(keep_history=False)
     def evaluate(
         self,
         dataloader: Iterable,
@@ -326,6 +332,7 @@ class Trainer:
         result = dict()
         # Get total number of batch
         num_batch = len(dataloader)
+        valid_loss_meter = AverageMeter()
         for metric in self._task.metrics:
             metric.reset()
         with torch.no_grad():
@@ -336,7 +343,7 @@ class Trainer:
                     outputs = self._model(inputs)
                     loss = self._caculate_loss(inputs, outputs, targets)
                     outputs = outputs.detach().cpu()
-                    self._valid_loss_meter.update(loss.item())
+                    valid_loss_meter.update(loss.item())
                     if self._metric_proxy:
                         for metric in self._task.metrics:
                             metric.update(*self._metric_proxy(inputs, targets, outputs))
@@ -347,8 +354,8 @@ class Trainer:
 
         for metric in self._task.metrics:
             result[str(metric)] = metric.result()
-        result['loss'] = self._valid_loss_meter.avg
-        self._valid_loss_meter.reset()
+        self._info_meter.update('valid_loss', valid_loss_meter.avg)
+        result['loss'] = valid_loss_meter.avg
         return result
 
     @classmethod
@@ -404,7 +411,7 @@ class Trainer:
                 disable=not self._verbose) as pbar:
                 for step, (inputs, target) in pbar:
                     outputs = self._model(inputs).detach().cpu()
-                    target = target.detach().cpu()
+                    target = target["target"].detach().cpu()
                     predictions.append(outputs)
                     targets.append(target)
             self._model.train()
@@ -510,3 +517,6 @@ class Trainer:
         self._last_result = state['last_result']
         if self._scheduler:
             self._scheduler.load_state_dict(state['scheduler'])
+
+    def load_best_model(self, model_path="model.pt"):
+        return self.restore_model(self._save_dir.joinpath(model_path))

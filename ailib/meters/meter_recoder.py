@@ -15,8 +15,9 @@ class RecoderMeter(object):
     def __init__(self):
         self.reset()
 
-    def reset(self):
-        self.vals = defaultdict(list)
+    def reset(self, keep_history=False):
+        if not keep_history:
+            self.vals = defaultdict(list)
         self.avg = defaultdict(int)
         self.sum = defaultdict(int)
         self.count = defaultdict(int)

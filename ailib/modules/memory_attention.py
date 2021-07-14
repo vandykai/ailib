@@ -98,7 +98,7 @@ class MemoryAttention(nn.Module):
 
         tgt_len, bsz, embed_dim = query.size()
         assert embed_dim == self.qdim 
-        assert list(query.size()) == [tgt_len, bsz, self.qdim ]
+        assert list(query.size()) == [tgt_len, bsz, self.qdim]
 
         q = self.q_proj(query)
         k = self.k_proj(key)
