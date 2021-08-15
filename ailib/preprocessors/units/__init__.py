@@ -9,7 +9,7 @@ from .punc_removal import PuncRemoval
 from .stateful_unit import StatefulUnit
 from .stemming import Stemming
 from .stop_removal import StopRemoval
-from .tokenize import Tokenize
+from .tokenize import NLTKTokenize, JiebaTokenize
 from .vocabulary import Vocabulary
 from .word_hashing import WordHashing
 from .character_index import CharacterIndex

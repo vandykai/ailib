@@ -4,7 +4,7 @@ import abc
 import functools
 import typing
 from pathlib import Path
-
+from ailib.data_pack import DataPack
 import dill
 
 from ailib import preprocessors
@@ -49,7 +49,7 @@ class BasePreprocessor(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def fit(
         self,
-        data_pack: 'DataPack',
+        data_pack: DataPack,
         verbose: int = 1
     ) -> 'BasePreprocessor':
         """
@@ -68,9 +68,9 @@ class BasePreprocessor(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def transform(
         self,
-        data_pack: 'DataPack',
+        data_pack: DataPack,
         verbose: int = 1
-    ) -> 'DataPack':
+    ) -> DataPack:
         """
         Transform input data to expected manner.
 
@@ -84,9 +84,9 @@ class BasePreprocessor(metaclass=abc.ABCMeta):
 
     def fit_transform(
         self,
-        data_pack: 'DataPack',
+        data_pack: DataPack,
         verbose: int = 1
-    ) -> 'DataPack':
+    ) -> DataPack:
         """
         Call fit-transform.
 
@@ -118,13 +118,13 @@ class BasePreprocessor(metaclass=abc.ABCMeta):
     def _default_units(cls) -> list:
         """Prepare needed process units."""
         return [
-            preprocessors.units.tokenize.Tokenize(),
+            preprocessors.units.tokenize.NLTKTokenize(),
             preprocessors.units.lowercase.Lowercase(),
             preprocessors.units.punc_removal.PuncRemoval(),
         ]
 
 
-def load_preprocessor(dirpath: typing.Union[str, Path]) -> 'DataPack':
+def load_preprocessor(dirpath: typing.Union[str, Path]) -> DataPack:
     """
     Load the fitted `context`. The reverse function of :meth:`save`.
 

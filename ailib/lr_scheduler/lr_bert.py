@@ -31,6 +31,6 @@ class BertLR(object):
         return 1.0 - x
 
     def batch_step(self, metrics, training_step=None):
-        lr_this_step = self.learning_rate * self.warmup_linear(training_step / self.t_total,self.warmup)
+        lr_this_step = self.learning_rate * self.warmup_linear(training_step / self.t_total, self.warmup)
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = lr_this_step

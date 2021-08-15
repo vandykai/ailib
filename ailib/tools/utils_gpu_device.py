@@ -2,6 +2,7 @@ import logging
 import torch
 
 logger = logging.getLogger('__ailib__')
+
 def prepare_device(n_gpu_use):
     """
     setup GPU device if available, move model into configured device

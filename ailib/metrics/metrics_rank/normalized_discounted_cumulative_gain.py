@@ -17,12 +17,34 @@ class NormalizedDiscountedCumulativeGain(RankingMetric):
         """
         self._k = k
         self._threshold = threshold
+        self.reset()
 
     def __repr__(self) -> str:
         """:return: Formated string representation of the metric."""
         return f"{self.ALIAS[0]}@{self._k}({self._threshold})"
 
-    def __call__(self, y_true: np.array, y_pred: np.array) -> float:
+    def reset(self):
+        self.ndcgs = []
+
+    def _compute(self, y_true: list, y_pred: list) -> float:
+        """
+        Calculate accuracy.
+
+        :param y_true: The ground true label of each document.
+        :param y_pred: The predicted scores of each document.
+        :return: Accuracy list.
+        """
+        print(y_pred)
+        dcg_metric = DiscountedCumulativeGain(k=self._k, threshold=self._threshold)
+        idcg_val = dcg_metric(y_true, [[item] for item in y_true])
+        dcg_val = dcg_metric(y_true, y_pred)
+        return dcg_val / idcg_val if idcg_val != 0 else 0.
+
+    def update(self, y_true: list, y_pred: list):
+        ndcg = self._compute(y_true, y_pred)
+        self.ndcgs.append(ndcg)
+
+    def __call__(self, y_true: list, y_pred: list) -> float:
         """
         Calculate normalized discounted cumulative gain (ndcg).
 
@@ -46,8 +68,7 @@ class NormalizedDiscountedCumulativeGain(RankingMetric):
 
         :return: Normalized discounted cumulative gain.
         """
-        dcg_metric = DiscountedCumulativeGain(k=self._k,
-                                              threshold=self._threshold)
-        idcg_val = dcg_metric(y_true, y_true)
-        dcg_val = dcg_metric(y_true, y_pred)
-        return dcg_val / idcg_val if idcg_val != 0 else 0
+        return self._compute(y_true, y_pred)
+
+    def result(self):
+        return np.mean(self.ndcgs).item()

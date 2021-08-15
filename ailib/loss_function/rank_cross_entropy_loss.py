@@ -22,23 +22,28 @@ class RankCrossEntropyLoss(nn.Module):
         """
         Calculate rank cross entropy loss.
 
-        :param y_pred: Predicted result.
-        :param y_true: Label.
+        :param y_pred: Predicted result. [N*(num_pos+num_neg), 1]
+        :param y_true: Label. [N*(num_pos+num_neg)]
         :return: Rank cross loss.
         """
-        logits = y_pred[::(self.num_neg + 1), :]
-        labels = y_true[::(self.num_neg + 1), :]
-        for neg_idx in range(self.num_neg):
-            neg_logits = y_pred[(neg_idx + 1)::(self.num_neg + 1), :]
-            neg_labels = y_true[(neg_idx + 1)::(self.num_neg + 1), :]
-            logits = torch.cat((logits, neg_logits), dim=-1)
-            labels = torch.cat((labels, neg_labels), dim=-1)
-        return -torch.mean(
-            torch.sum(
-                labels * torch.log(F.softmax(logits, dim=-1) + torch.finfo(float).eps),
-                dim=-1
-            )
-        )
+
+        # change [[pos], [neg], [neg], [neg],...,[pos], [neg], [neg], [neg],...]] to [[pos, neg, neg, neg,...],[pos, neg, neg, neg,...]]
+        logits = y_pred.reshape(-1, self.num_neg + 1)
+        labels = y_true.reshape(-1, self.num_neg + 1)
+        return -torch.sum(labels * torch.log_softmax(logits, dim=-1), dim=-1).mean()
+        # logits = y_pred[::(self.num_neg + 1), :]
+        # labels = y_true[::(self.num_neg + 1), :]
+        # for neg_idx in range(self.num_neg):
+        #     neg_logits = y_pred[(neg_idx + 1)::(self.num_neg + 1), :]
+        #     neg_labels = y_true[(neg_idx + 1)::(self.num_neg + 1), :]
+        #     logits = torch.cat((logits, neg_logits), dim=-1)
+        #     labels = torch.cat((labels, neg_labels), dim=-1)
+        # return -torch.mean(
+        #     torch.sum(
+        #         labels * torch.log(F.softmax(logits, dim=-1) + torch.finfo(float).eps),
+        #         dim=-1
+        #     )
+        # )
 
     @property
     def num_neg(self):

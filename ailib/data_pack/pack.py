@@ -69,9 +69,9 @@ def pack(
             relation[col] = df[col]
     if 'label' in relation:
         if task == 'classification' or isinstance(
-           task, tasks.Classification):
+           task, tasks.ClassificationTask):
             relation['label'] = relation['label'].astype(int)
-        elif task == 'ranking' or isinstance(task, tasks.Ranking):
+        elif task == 'ranking' or isinstance(task, tasks.RankingTask):
             relation['label'] = relation['label'].astype(float)
         else:
             raise ValueError(f"{task} is not a valid task.")

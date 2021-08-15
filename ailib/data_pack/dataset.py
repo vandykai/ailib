@@ -6,7 +6,7 @@ from collections import Iterable
 import numpy as np
 import pandas as pd
 from torch.utils import data
-from random import randint
+from random import randint, shuffle
 
 from .data_pack import DataPack
 from tqdm.auto import tqdm
@@ -30,15 +30,18 @@ class Dataset(data.IterableDataset):
     :param callbacks: Callbacks. See `matchzoo.dataloader.callbacks` for more details.
 
     Examples:
-        >>> import matchzoo as mz
-        >>> data_pack = mz.datasets.toy.load_data(stage='train')
-        >>> preprocessor = mz.preprocessors.BasicPreprocessor()
+        >>> from ailib.datasets.text_matching.wiki_qa.io import data_train_df
+        >>> from ailib.data_pack import pack, Dataset
+        >>> from ailib.data_pack import callbacks
+        >>> from ailib import preprocessors
+        >>> data_pack = pack(data_train_df, task='ranking')
+        >>> preprocessor = preprocessors.BasicPreprocessor()
         >>> data_processed = preprocessor.fit_transform(data_pack)
-        >>> dataset_point = mz.dataloader.Dataset(
+        >>> dataset_point = Dataset(
         ...     data_processed, mode='point', batch_size=32)
         >>> len(dataset_point)
         4
-        >>> dataset_pair = mz.dataloader.Dataset(
+        >>> dataset_pair = Dataset(
         ...     data_processed, mode='pair', num_dup=2, num_neg=2, batch_size=32)
         >>> len(dataset_pair)
         1
@@ -178,7 +181,7 @@ class Dataset(data.IterableDataset):
 
         # batch_indices: index -> batch of indices
         self._batch_indices = []
-        for i in range(math.ceil(num_instances / self._batch_size)):
+        for i in range(math.floor(num_instances / self._batch_size)):
             lower = self._batch_size * i
             upper = self._batch_size * (i + 1)
             candidates = index_pool[lower:upper]
@@ -298,12 +301,16 @@ class Dataset(data.IterableDataset):
                 labels = group.label.unique()
                 for label in labels[:-1]:
                     pos_samples = group[group.label == label].index.tolist()
+                    pos_samples = pos_samples * num_dup
                     neg_samples = group[group.label < label].index.tolist()
                     for pos_sample in pos_samples:
                         pbar.update(1)
                         neg_sample = [neg_samples[randint(0,len(neg_samples))-1] for _ in range(num_neg)]
                         #neg_sample = sample(neg_samples, num_neg)
-                        pairs.append(pos_sample)
-                        pairs.extend(neg_sample)
+                        sub_pairs = [pos_sample]+neg_sample
+                        #shuffle(sub_pairs)
+                        pairs.extend(sub_pairs)
+                        #pairs.append(pos_sample)
+                        #pairs.extend(neg_sample)
         new_relation = relation.loc[pairs].reset_index(drop=True)
         return new_relation

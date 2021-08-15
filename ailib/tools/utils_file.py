@@ -1,3 +1,5 @@
+import json
+
 def read_lines(file_path, *args):
     with open(file_path, *args) as f:
         lines = f.readlines()
@@ -13,3 +15,8 @@ def file_de_duplication_line(file_name):
     with open(file_name, "w") as f:
         for line in all_line:
             f.write(line+"\n")
+
+def save_to_file(json_list, file_name):
+    with open(file_name, "w") as f:
+        for item in json_list:
+            f.write(json.dumps(item, ensure_ascii=False)+'\n')

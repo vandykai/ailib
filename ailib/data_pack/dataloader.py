@@ -6,10 +6,9 @@ import numpy as np
 import torch
 from torch.utils import data
 
-import matchzoo as mz
-from matchzoo.dataloader.dataset import Dataset
-from matchzoo.engine.base_callback import BaseCallback
-
+from ailib.data_pack.dataset import Dataset
+from ailib.data_pack.base_callback import BaseCallback
+from ailib import preprocessors
 
 class DataLoader(object):
     """
@@ -33,14 +32,17 @@ class DataLoader(object):
         as input, after seeding and before data loading. (default: None)
 
     Examples:
-        >>> import matchzoo as mz
-        >>> data_pack = mz.datasets.toy.load_data(stage='train')
-        >>> preprocessor = mz.preprocessors.BasicPreprocessor()
+        >>> from ailib.datasets.text_matching.wiki_qa.io import data_train_df
+        >>> from ailib.data_pack import pack, Dataset
+        >>> from ailib.data_pack import callbacks
+        >>> from ailib import preprocessors
+        >>> data_pack = pack(data_train_df, task='ranking')
+        >>> preprocessor = preprocessors.BasicPreprocessor()
         >>> data_processed = preprocessor.fit_transform(data_pack)
-        >>> dataset = mz.dataloader.Dataset(
+        >>> dataset = Dataset(
         ...     data_processed, mode='point', batch_size=32)
-        >>> padding_callback = mz.dataloader.callbacks.BasicPadding()
-        >>> dataloader = mz.dataloader.DataLoader(
+        >>> padding_callback = callbacks.BasicPadding()
+        >>> dataloader = DataLoader(
         ...     dataset, stage='train', callback=padding_callback)
         >>> len(dataloader)
         4
@@ -49,7 +51,7 @@ class DataLoader(object):
 
     def __init__(
         self,
-        preprocessor: mz.preprocessors.BasicPreprocessor,
+        preprocessor: preprocessors.BasicPreprocessor,
         dataset: Dataset,
         device: typing.Union[torch.device, int, list, None] = None,
         stage='train',

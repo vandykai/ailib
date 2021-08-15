@@ -137,13 +137,13 @@ class DataPack(object):
         columns = list(frame.columns)
         if self.has_label:
             columns.remove('label')
-            y = np.vstack(np.asarray(frame['label']))
+            y = np.asarray(frame['label'])
         else:
             y = None
 
         x = frame[columns].to_dict(orient='list')
         for key, val in x.items():
-            x[key] = np.array(val)
+            x[key] = np.array(val, dtype=object)
 
         return x, y
 

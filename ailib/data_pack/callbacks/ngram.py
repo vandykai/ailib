@@ -1,7 +1,7 @@
 import numpy as np
 
-import matchzoo as mz
-from matchzoo.engine.base_callback import BaseCallback
+from ailib import preprocessors
+from ailib.data_pack.base_callback import BaseCallback
 from tqdm.auto import tqdm
 
 class Ngram(BaseCallback):
@@ -13,13 +13,16 @@ class Ngram(BaseCallback):
     :param mode: It can be one of 'index', 'onehot', 'sum' or 'aggregate'.
 
     Example:
-        >>> import matchzoo as mz
+        >>> from ailib.datasets.text_matching.wiki_qa.io import data_train_df
+        >>> from ailib.data_pack import pack, Dataset
+        >>> from ailib.data_pack import callbacks
+        >>> from ailib import preprocessors
+        >>> data_pack = pack(data_train_df, task='ranking')
         >>> from matchzoo.dataloader.callbacks import Ngram
-        >>> data = mz.datasets.toy.load_data()
-        >>> preprocessor = mz.preprocessors.BasicPreprocessor(ngram_size=3)
+        >>> preprocessor = preprocessors.BasicPreprocessor(ngram_size=3)
         >>> data = preprocessor.fit_transform(data)
         >>> callback = Ngram(preprocessor=preprocessor, mode='index')
-        >>> dataset = mz.dataloader.Dataset(
+        >>> dataset = Dataset(
         ...     data, callbacks=[callback])
         >>> _ = dataset[0]
 
@@ -27,7 +30,7 @@ class Ngram(BaseCallback):
 
     def __init__(
         self,
-        preprocessor: mz.preprocessors.BasicPreprocessor,
+        preprocessor: preprocessors.BasicPreprocessor,
         mode: str = 'index'
     ):
         """Init."""
@@ -64,8 +67,8 @@ class Ngram(BaseCallback):
 
 
 def _build_word_ngram_map(
-    ngram_process_unit: mz.preprocessors.units.NgramLetter,
-    ngram_vocab_unit: mz.preprocessors.units.Vocabulary,
+    ngram_process_unit: preprocessors.units.NgramLetter,
+    ngram_vocab_unit: preprocessors.units.Vocabulary,
     index_term: dict,
     mode: str = 'index'
 ) -> dict:
@@ -98,9 +101,10 @@ def _build_word_ngram_map(
             word_to_ngram[idx] = onehot
         elif mode == 'sum' or mode == 'aggregate':
             onehot = np.zeros((ngram_size,))
-            for idx in word_ngram:
-                onehot[idx] = 1
-            word_to_ngram[idx] = sum_vector
+            for sub_idx in word_ngram:
+                onehot[sub_idx] = 1
+            sum_vector = np.sum(onehot, axis=0)
+            word_to_ngram[sub_idx] = sum_vector
         else:
             raise ValueError(f'mode error, it should be one of `index`, '
                              f'`onehot`, `sum` or `aggregate`.'

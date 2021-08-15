@@ -1,7 +1,7 @@
 import numpy as np
 
-import matchzoo as mz
-from matchzoo.engine.base_callback import BaseCallback
+from ailib import preprocessors
+from ailib.data_pack.base_callback import BaseCallback
 
 
 class Histogram(BaseCallback):
@@ -22,7 +22,7 @@ class Histogram(BaseCallback):
         hist_mode: str = 'CH',
     ):
         """Init."""
-        self._match_hist_unit = mz.preprocessors.units.MatchingHistogram(
+        self._match_hist_unit = preprocessors.units.MatchingHistogram(
             bin_size=bin_size,
             embedding_matrix=embedding_matrix,
             normalize=True,
@@ -47,7 +47,7 @@ def _trunc_text(input_text: list, length: list) -> list:
 
 def _build_match_histogram(
     x: dict,
-    match_hist_unit: mz.preprocessors.units.MatchingHistogram
+    match_hist_unit: preprocessors.units.MatchingHistogram
 ) -> np.ndarray:
     """
     Generate the matching hisogram for input.

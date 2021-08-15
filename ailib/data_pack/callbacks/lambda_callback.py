@@ -1,4 +1,4 @@
-from matchzoo.engine.base_callback import BaseCallback
+from ailib.data_pack.base_callback import BaseCallback
 
 
 class LambdaCallback(BaseCallback):

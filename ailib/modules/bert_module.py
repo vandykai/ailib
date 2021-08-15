@@ -3,7 +3,8 @@ import typing
 
 import torch
 import torch.nn as nn
-from transformers import BertModel
+from transformers import AutoModel
+from transformers.models.electra.modeling_electra import ElectraSelfAttention
 
 
 class BertModule(nn.Module):
@@ -14,17 +15,17 @@ class BertModule(nn.Module):
     Bidirectional Transformers for Language Understanding by Jacob Devlin,
     Ming-Wei Chang, Kenton Lee and Kristina Toutanova.
 
-    :param mode: String, supported mode can be referred
-        https://huggingface.co/pytorch-transformers/pretrained_models.html.
+    :param pretrained_model_path: String, supported model can be referred
+        https://huggingface.co/transformers/model_doc/auto.html.
 
     """
 
-    def __init__(self, mode: str = 'bert-base-uncased'):
+    def __init__(self, pretrained_model_path: str = 'bert-base-uncased'):
         """:class:`BertModule` constructor."""
         super().__init__()
-        self.bert = BertModel.from_pretrained(mode)
+        self.bert = AutoModel.from_pretrained(pretrained_model_path)
 
-    def forward(self, x, y):
+    def forward(self, x, y=None):
         """Forward."""
         input_ids = torch.cat((x, y), dim=-1)
         token_type_ids = torch.cat((
@@ -32,4 +33,4 @@ class BertModule(nn.Module):
             torch.ones_like(y)), dim=-1).long()
         attention_mask = (input_ids != 0)
         return self.bert(input_ids=input_ids, token_type_ids=token_type_ids,
-                         attention_mask=attention_mask)
+                        attention_mask=attention_mask)

@@ -205,7 +205,7 @@ class Trainer:
         :param loss: Tensor. Loss of model.
 
         """
-        self._optimizer.zero_grad(set_to_none=True)
+        self._optimizer.zero_grad()
         loss.backward()
         if self._clip_norm:
             nn.utils.clip_grad_norm_(
@@ -220,8 +220,8 @@ class Trainer:
                 self._scheduler.batch_step(metrics, step)
             elif type=='epoch_step' and hasattr(self._scheduler, "epoch_step"):
                 self._scheduler.epoch_step(metrics, step)
-            elif type=='epoch_step' and hasattr(self._scheduler, "step"):
-                self._scheduler.step(metrics, step)
+            elif hasattr(self._scheduler, "step"):
+                self._scheduler.step()
 
     def run(self):
         """
@@ -240,7 +240,7 @@ class Trainer:
                 break
         logger.info(f"best model path: {self._save_dir.joinpath('model.pt')}")
         if self._verbose:
-            tqdm.write(f'Cost time: {timer.time}s')
+            tqdm.write(f'cost time: {timer.time}s')
 
     # loss is (inputs, outputs, targets) while metric is (inputs, targets, outputs)
     def _caculate_loss(self, inputs, outputs, targets):
@@ -285,7 +285,7 @@ class Trainer:
                 self._run_scheduler(metrics=loss.item(), step=self._iteration, type='batch_step')
                 # Set progress bar
                 pbar.set_description(f'Epoch {self._epoch}/{self._epochs}')
-                pbar.set_postfix(loss=f'{loss.item():.3f}')
+                pbar.set_postfix(grad_norm=f'{self._info_meter.avg["grad_norm"]:.5f}', loss=f'{loss.item():.5f}')
 
                 # Run validate
                 self._iteration += 1
@@ -341,54 +341,27 @@ class Trainer:
                   disable=not self._verbose) as pbar:
                 for step, (inputs, targets) in pbar:
                     outputs = self._model(inputs)
-                    loss = self._caculate_loss(inputs, outputs, targets)
+                    if 'loss' in self._task.metrics:
+                        loss = self._caculate_loss(inputs, outputs, targets)
+                        valid_loss_meter.update(loss.item())
                     outputs = outputs.detach().cpu()
-                    valid_loss_meter.update(loss.item())
                     if self._metric_proxy:
                         for metric in self._task.metrics:
-                            metric.update(*self._metric_proxy(inputs, targets, outputs))
+                            if isinstance(metric, BaseMetric):
+                                metric.update(*self._metric_proxy(inputs, targets, outputs))
                     else:
                         for metric in self._task.metrics:
-                            metric.update(targets["target"].detach().cpu().numpy().tolist(), outputs.numpy().tolist())
+                            if isinstance(metric, BaseMetric):
+                                metric.update(targets["target"].detach().cpu().numpy().tolist(), outputs.numpy().tolist())
             self._model.train()
 
         for metric in self._task.metrics:
-            result[str(metric)] = metric.result()
-        self._info_meter.update('valid_loss', valid_loss_meter.avg)
-        result['loss'] = valid_loss_meter.avg
+            if isinstance(metric, BaseMetric):
+                result[str(metric)] = metric.result()
+        if 'loss' in self._task.metrics:
+            self._info_meter.update('valid_loss', valid_loss_meter.avg)
+            result['loss'] = valid_loss_meter.avg
         return result
-
-    @classmethod
-    def _eval_metric_on_data_frame(
-        cls,
-        metric: BaseMetric,
-        id_left: typing.Any,
-        y_true: typing.Union[list, np.array],
-        y_pred: typing.Union[list, np.array]
-    ):
-        """
-        Eval metric on data frame.
-
-        This function is used to eval metrics for `Ranking` task.
-
-        :param metric: Metric for `Ranking` task.
-        :param id_left: id of input left. Samples with same id_left should
-            be grouped for evaluation.
-        :param y_true: Labels of dataset.
-        :param y_pred: Outputs of model.
-        :return: Evaluation result.
-
-        """
-        eval_df = pd.DataFrame(data={
-            'id': id_left,
-            'true': y_true,
-            'pred': y_pred
-        })
-        assert isinstance(metric, BaseMetric)
-        val = eval_df.groupby(by='id').apply(
-            lambda df: metric(df['true'].values, df['pred'].values)
-        ).mean()
-        return val
 
     def predicts(
         self,

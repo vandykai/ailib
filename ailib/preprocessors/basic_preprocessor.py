@@ -8,6 +8,7 @@ from .base_preprocessor import BasePreprocessor
 from .utils import build_vocab_unit
 from .utils import build_unit_from_data_pack
 from .utils import chain_transform
+from .utils import Vocabulary
 
 from ailib import preprocessors
 from ailib.data_pack import DataPack
@@ -65,6 +66,7 @@ class BasicPreprocessor(BasePreprocessor):
                  filter_mode: str = 'df',
                  filter_low_freq: float = 1,
                  filter_high_freq: float = float('inf'),
+                 filter_fix_size: float = float('inf'),
                  remove_stop_words: bool = False,
                  ngram_size: typing.Optional[int] = None):
         """Initialization."""
@@ -83,6 +85,7 @@ class BasicPreprocessor(BasePreprocessor):
         self._filter_unit = units.FrequencyFilter(
             low=filter_low_freq,
             high=filter_high_freq,
+            fix_size=filter_fix_size,
             mode=filter_mode
         )
         self._units = self._default_units()
@@ -93,6 +96,14 @@ class BasicPreprocessor(BasePreprocessor):
             self._context['ngram_process_unit'] = units.NgramLetter(
                 ngram=ngram_size, reduce_dim=True
             )
+    @classmethod
+    def _default_units(cls) -> list:
+        """Prepare needed process units."""
+        return [
+            preprocessors.units.tokenize.JiebaTokenize(),
+            preprocessors.units.lowercase.Lowercase(),
+            preprocessors.units.punc_removal.PuncRemoval(),
+        ]
 
     def fit(self, data_pack: DataPack, verbose: int = 1):
         """
@@ -113,8 +124,10 @@ class BasicPreprocessor(BasePreprocessor):
                                             mode='right', verbose=verbose)
         self._context['filter_unit'] = fitted_filter_unit
 
-        vocab_unit = build_vocab_unit(data_pack, verbose=verbose)
+        vocab_unit = Vocabulary()
+        vocab_unit.fit(fitted_filter_unit._context[fitted_filter_unit._mode])
         self._context['vocab_unit'] = vocab_unit
+        self._context['all_vocab_unit'] = build_vocab_unit(data_pack, verbose=verbose)
 
         vocab_size = len(vocab_unit.context['term_index'])
         self._context['vocab_size'] = vocab_size

@@ -15,27 +15,19 @@ class MeanAveragePrecision(RankingMetric):
         :param threshold: The threshold of relevance degree.
         """
         self._threshold = threshold
+        self.reset()
 
     def __repr__(self):
         """:return: Formated string representation of the metric."""
         return f"{self.ALIAS[0]}({self._threshold})"
 
-    def __call__(self, y_true: np.array, y_pred: np.array) -> float:
-        """
-        Calculate mean average precision.
+    def reset(self):
+        self.maps = []
 
-        Example:
-            >>> y_true = [0, 1, 0, 0]
-            >>> y_pred = [0.1, 0.6, 0.2, 0.3]
-            >>> MeanAveragePrecision()(y_true, y_pred)
-            1.0
-
-        :param y_true: The ground true label of each document.
-        :param y_pred: The predicted scores of each document.
-        :return: Mean average precision.
-        """
+    def _compute(self, y_true: list, y_pred: list) -> float:
         result = 0.
         pos = 0
+        y_pred = [subitem for item in y_pred for subitem in item]
         coupled_pair = sort_and_couple(y_true, y_pred)
         for idx, (label, score) in enumerate(coupled_pair):
             if label > self._threshold:
@@ -45,3 +37,26 @@ class MeanAveragePrecision(RankingMetric):
             return 0.
         else:
             return result / pos
+
+    def update(self, y_true: list, y_pred: list):
+        map = self._compute(y_true, y_pred)
+        self.maps.append(map)
+
+    def __call__(self, y_true: list, y_pred: list) -> float:
+        """
+        Calculate mean average precision.
+
+        Example:
+            >>> y_true = [0, 1, 0, 0]
+            >>> y_pred = [[0.1], [0.6], [0.2], [0.3]]
+            >>> MeanAveragePrecision()(y_true, y_pred)
+            1.0
+
+        :param y_true: The ground true label of each document.
+        :param y_pred: The predicted scores of each document.
+        :return: Mean average precision.
+        """
+        return self._compute(y_true, y_pred)
+
+    def result(self):
+        return np.mean(self.maps).item()

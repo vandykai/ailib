@@ -3,7 +3,7 @@ from collections import Iterable
 
 import numpy as np
 
-from matchzoo.engine.base_callback import BaseCallback
+from ailib.data_pack.base_callback import BaseCallback
 
 
 def _infer_dtype(value):

@@ -1,77 +1,60 @@
-"""An implementation of Bert Model."""
+"""An implementation of DSSM, Deep Structured Semantic Model."""
 import typing
 
 import torch
+import torch.nn.functional as F
+
+from ailib.models.base_model import BaseModel
+from ailib.models.base_model_param import BaseModelParam
+import torch
 import torch.nn as nn
-from pytorch_transformers import BertModel
 
-from matchzoo import preprocessors
-from matchzoo.engine.param_table import ParamTable
-from matchzoo.engine.param import Param
-from matchzoo.engine.base_model import BaseModel
-from matchzoo.engine.base_preprocessor import BasePreprocessor
-from matchzoo.engine import hyper_spaces
-from matchzoo.dataloader import callbacks
-from matchzoo.modules import BertModule
+from ailib.param.param import Param
+from ailib.param import hyper_spaces
+from ailib.param.param_table import ParamTable
+from ailib.tools.utils_name_parse import parse_activation
+from ailib.modules.bert_module import BertModule
 
+class ModelParam(BaseModelParam):
 
-class Bert(BaseModel):
-    """Bert Model."""
-
-    @classmethod
-    def get_default_params(cls) -> ParamTable:
-        """:return: model default parameters."""
-        params = super().get_default_params()
-        params.add(Param(name='mode', value='bert-base-uncased',
-                         desc="Pretrained Bert model."))
-        params.add(Param(
-            'dropout_rate', 0.0,
-            hyper_space=hyper_spaces.quniform(
-                low=0.0, high=0.8, q=0.01),
+    def __init__(self, with_embedding=False, with_multi_layer_perceptron=False):
+        super().__init__(with_embedding, with_multi_layer_perceptron)
+        self['model_name'] = "BERTMatch"
+        self.add(Param(name='pretrained_model_path', value='albert_chinese_tiny',
+                        desc='the path or name of the pretrain model'))
+        self.add(Param(name='pretrained_model_out_dim', value=768,
+                        desc='the dim of the pretrain model'))
+        self.add(Param(name='dropout_rate', value=0.0,
+            hyper_space=hyper_spaces.quniform(low=0.0, high=0.8, q=0.01),
             desc="The dropout rate."
         ))
-        return params
 
-    @classmethod
-    def get_default_preprocessor(
-        cls,
-        mode: str = 'bert-base-uncased'
-    ) -> BasePreprocessor:
-        """:return: Default preprocessor."""
-        return preprocessors.BertPreprocessor(mode=mode)
+class Model(BaseModel):
+    """
+    BERT semantic model.
 
-    @classmethod
-    def get_default_padding_callback(
-        cls,
-        fixed_length_left: int = None,
-        fixed_length_right: int = None,
-        pad_value: typing.Union[int, str] = 0,
-        pad_mode: str = 'pre'
-    ):
-        """:return: Default padding callback."""
-        return callbacks.BertPadding(
-            fixed_length_left=fixed_length_left,
-            fixed_length_right=fixed_length_right,
-            pad_value=pad_value,
-            pad_mode=pad_mode)
+    Examples:
+        >>> model_param = ModelParam()
+        >>> model_param['task'] = ranking_task
+        >>> model_param['pretrained_model_path'] = 'albert_chinese_tiny'
+        >>> model_param['pretrained_model_out_dim'] = 312
+        >>> model_param.to_frame()
+        >>> model = Model(model_param.to_config())
 
-    def build(self):
-        """Build model structure."""
-        self.bert = BertModule(mode=self._params['mode'])
-        self.dropout = nn.Dropout(p=self._params['dropout_rate'])
-        if 'base' in self._params['mode']:
-            dim = 768
-        elif 'large' in self._params['mode']:
-            dim = 1024
-        self.out = self._make_output_layer(dim)
+    """
+    def __init__(self, config):
+        """
+        BERT arthitecture.
+        """
+        super().__init__()
+        self.config = config
+        self.bert = BertModule(self.config.pretrained_model_path)
+        self.dropout = nn.Dropout(p=self.config.dropout_rate)
+        self.out = self._make_output_layer(self.config.pretrained_model_out_dim)
 
     def forward(self, inputs):
         """Forward."""
-
         input_left, input_right = inputs['text_left'], inputs['text_right']
-
         bert_output = self.bert(input_left, input_right)[1]
-
         out = self.out(self.dropout(bert_output))
-
         return out

@@ -41,12 +41,13 @@ class FrequencyFilter(StatefulUnit):
 
     """
 
-    def __init__(self, low: float = 0, high: float = float('inf'),
+    def __init__(self, low: float = 0, high: float = float('inf'), fix_size = float('inf'),
                  mode: str = 'df'):
         """Frequency filter unit."""
         super().__init__()
         self._low = low
         self._high = high
+        self._fix_size = fix_size
         self._mode = mode
 
     def fit(self, list_of_tokens: typing.List[typing.List[str]]):
@@ -61,12 +62,17 @@ class FrequencyFilter(StatefulUnit):
         else:
             raise ValueError(f"{self._mode} is not a valid filtering mode."
                              f"Mode must be one of `tf`, `df`, and `idf`.")
-
-        for k, v in stats.items():
+        pre_v = None
+        for k, v in sorted(stats.items(), key=lambda x: (x[1], x[0]), reverse=True):
             if self._low <= v < self._high:
+                if v != pre_v and len(valid_terms) >= self._fix_size:
+                    break
                 valid_terms.add(k)
-
+                pre_v = v
+        value_stats = collections.Counter()
+        value_stats.update(stats.values())
         self._context[self._mode] = valid_terms
+        self._context['value_distribution'] = value_stats
 
     def transform(self, input_: list) -> list:
         """Transform a list of tokens by filtering out unwanted words."""

@@ -1,6 +1,14 @@
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 import math
+import types
+
+def LambdaLRwrapper(optimizer, lr_lambda, last_epoch=-1, verbose=False):
+    lambdaLR = LambdaLR(optimizer, lr_lambda, last_epoch=-1, verbose=False)
+    def batch_step(self, metrics, training_step=None):
+        return self.step()
+    lambdaLR.batch_step = types.MethodType(batch_step, lambdaLR)
+    return lambdaLR
 
 def constant_schedule(optimizer, last_epoch=-1):
     """ Create a schedule with a constant learning rate.
