@@ -8,7 +8,6 @@ from torch.utils import data
 
 from ailib.data_pack.dataset import Dataset
 from ailib.data_pack.base_callback import BaseCallback
-from ailib import preprocessors
 
 class DataLoader(object):
     """
@@ -51,7 +50,6 @@ class DataLoader(object):
 
     def __init__(
         self,
-        preprocessor: preprocessors.BasicPreprocessor,
         dataset: Dataset,
         device: typing.Union[torch.device, int, list, None] = None,
         stage='train',
@@ -71,8 +69,6 @@ class DataLoader(object):
         elif not (isinstance(device, torch.device) or isinstance(device, int)):
             device = torch.device(
                 "cuda" if torch.cuda.is_available() else "cpu")
-
-        self.preprocessor = preprocessor
         self._dataset = dataset
         self._pin_momory = pin_memory
         self._timeout = timeout
@@ -123,8 +119,8 @@ class DataLoader(object):
                     value = [[i for sub_item in item for i in sub_item] for item in value]
                     sparce_indices = [[i for i, item in enumerate(value) for _ in range(len(item))], [i for item in value for i in item]]
                     sparce_values = [1 for _ in range(len(sparce_indices[0]))]
-                    batch_x[key] = torch.sparse_coo_tensor(sparce_indices, sparce_values, torch.Size(
-                        [len(value), len(self.preprocessor.context['ngram_vocab_unit'].context['index_term'])]), device=self._device)
+                    #batch_x[key] = torch.sparse_coo_tensor(sparce_indices, sparce_values, torch.Size(
+                    #    [len(value), len(self.preprocessor.context['ngram_vocab_unit'].context['index_term'])]), device=self._device)
                     # for index, ngram_ids in enumerate(value):
                     #     for idx in ngram_ids:
                     #         batch_x[key][index][idx] += 1

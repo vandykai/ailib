@@ -4,10 +4,10 @@ from transformers import AutoTokenizer
 
 from . import units
 from ailib.data_pack import DataPack
-from ailib.preprocessors.base_preprocessor import BasePreprocessor
+from ailib.preprocessors.base_rank_preprocessor import BaseRankPreprocessor
+from functools import partial
 
-
-class BertPreprocessor(BasePreprocessor):
+class BertRankPreprocessor(BaseRankPreprocessor):
     """
     Baisc preprocessor helper.
 
@@ -19,7 +19,8 @@ class BertPreprocessor(BasePreprocessor):
     def __init__(self, mode: str = 'bert-base-uncased'):
         """Initialization."""
         super().__init__()
-        self._tokenizer = AutoTokenizer.from_pretrained(mode)
+        self._tokenizer_inner = AutoTokenizer.from_pretrained(mode).encode
+        self._tokenizer = lambda x:self._tokenizer_inner(x, add_special_tokens=False)
 
     def fit(self, data_pack: DataPack, verbose: int = 1):
         """Tokenizer is all BertPreprocessor's need."""
@@ -36,7 +37,7 @@ class BertPreprocessor(BasePreprocessor):
         """
         data_pack = data_pack.copy()
 
-        data_pack.apply_on_text(self._tokenizer.encode,
+        data_pack.apply_on_text(self._tokenizer,
                                 mode='both', inplace=True, verbose=verbose)
         data_pack.append_text_length(inplace=True, verbose=verbose)
         data_pack.drop_empty(inplace=True)

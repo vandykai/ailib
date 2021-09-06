@@ -30,7 +30,6 @@ class DiscountedCumulativeGain(RankingMetric):
     def _compute(self, y_true: list, y_pred: list) -> float:
         if self._k <= 0:
             return 0.
-        y_pred = [subitem for item in y_pred for subitem in item]
         coupled_pair = sort_and_couple(y_true, y_pred)
         result = 0.
         for i, (label, score) in enumerate(coupled_pair):
@@ -52,7 +51,7 @@ class DiscountedCumulativeGain(RankingMetric):
 
         Example:
             >>> y_true = [0, 1, 2, 0]
-            >>> y_pred = [[0.4], [0.2], [0.5], [0.7]]
+            >>> y_pred = [0.4, 0.2, 0.5, 0.7]
             >>> DiscountedCumulativeGain(1)(y_true, y_pred)
             0.0
             >>> round(DiscountedCumulativeGain(k=-1)(y_true, y_pred), 2)

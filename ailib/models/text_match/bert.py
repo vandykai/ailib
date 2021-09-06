@@ -3,6 +3,7 @@ import typing
 
 import torch
 import torch.nn.functional as F
+from transformers import AutoModel
 
 from ailib.models.base_model import BaseModel
 from ailib.models.base_model_param import BaseModelParam
@@ -34,7 +35,10 @@ class Model(BaseModel):
     BERT semantic model.
 
     Examples:
+        >>> from ailib.tasks.ranking import RankingTask
+        >>> from ailib.loss_function import RankHingeLoss
         >>> model_param = ModelParam()
+        >>> ranking_task = RankingTask(losses= RankHingeLoss())
         >>> model_param['task'] = ranking_task
         >>> model_param['pretrained_model_path'] = 'albert_chinese_tiny'
         >>> model_param['pretrained_model_out_dim'] = 312
@@ -48,13 +52,19 @@ class Model(BaseModel):
         """
         super().__init__()
         self.config = config
-        self.bert = BertModule(self.config.pretrained_model_path)
+        self.bert = AutoModel.from_pretrained(self.config.pretrained_model_path)
         self.dropout = nn.Dropout(p=self.config.dropout_rate)
         self.out = self._make_output_layer(self.config.pretrained_model_out_dim)
 
     def forward(self, inputs):
         """Forward."""
-        input_left, input_right = inputs['text_left'], inputs['text_right']
-        bert_output = self.bert(input_left, input_right)[1]
+        # input_left, input_right = inputs['text_left'], inputs['text_right']
+        # bert_output = self.bert(input_left, input_right)[1]
+        input_ids = inputs['input_ids']
+        token_type_ids = inputs['token_type_ids']
+        attention_mask = (input_ids != 0)
+        bert_output = self.bert(input_ids=input_ids, token_type_ids=token_type_ids,
+                        attention_mask=attention_mask).last_hidden_state[:, 0]
         out = self.out(self.dropout(bert_output))
+        out = out.squeeze(-1)
         return out

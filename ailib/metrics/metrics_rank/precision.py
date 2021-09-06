@@ -30,7 +30,6 @@ class Precision(RankingMetric):
         if self._k <= 0:
             raise ValueError(f"k must be greater than 0."
                              f"{self._k} received.")
-        y_pred = [subitem for item in y_pred for subitem in item]
         coupled_pair = sort_and_couple(y_true, y_pred)
         precision = 0.0
         for idx, (label, score) in enumerate(coupled_pair):
@@ -51,7 +50,7 @@ class Precision(RankingMetric):
 
         Example:
             >>> y_true = [0, 0, 0, 1]
-            >>> y_pred = [[0.2], [0.4], [0.3], [0.1]]
+            >>> y_pred = [0.2, 0.4, 0.3, 0.1]
             >>> Precision(k=1)(y_true, y_pred)
             0.0
             >>> Precision(k=2)(y_true, y_pred)

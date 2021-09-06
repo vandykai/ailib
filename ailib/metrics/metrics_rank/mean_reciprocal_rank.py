@@ -25,7 +25,6 @@ class MeanReciprocalRank(RankingMetric):
         self.mrrs = []
 
     def _compute(self, y_true: list, y_pred: list) -> float:
-        y_pred = [subitem for item in y_pred for subitem in item]
         coupled_pair = sort_and_couple(y_true, y_pred)
         for idx, (label, pred) in enumerate(coupled_pair):
             if label > self._threshold:
@@ -43,7 +42,7 @@ class MeanReciprocalRank(RankingMetric):
         Example:
             >>> import numpy as np
             >>> y_true = np.asarray([1, 0, 0, 0])
-            >>> y_pred = np.asarray([[0.2], [0.3], [0.7], [1.0]])
+            >>> y_pred = np.asarray([0.2, 0.3, 0.7, 1.0])
             >>> MeanReciprocalRank()(y_true, y_pred)
             0.25
 

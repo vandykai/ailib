@@ -24,7 +24,7 @@ from ailib.tools.utils_statistic import grad_norm
 
 logger = logging.getLogger('__ailib__')
 
-class Trainer:
+class RankTrainer:
     """
     ailib tranier.
 
@@ -205,7 +205,7 @@ class Trainer:
         :param loss: Tensor. Loss of model.
 
         """
-        self._optimizer.zero_grad(set_to_none=True)
+        self._optimizer.zero_grad()
         loss.backward()
         if self._clip_norm:
             nn.utils.clip_grad_norm_(
@@ -283,7 +283,7 @@ class Trainer:
                 loss = self._caculate_loss(inputs, outputs, targets)
                 self._backward(loss)
                 self._info_meter.update("train_loss", loss.item())
-                self._info_meter.update("grad_norm", grad_norm(self._model.parameters(), float('inf')))
+                self._info_meter.update("grad_norm", grad_norm(self._model.parameters()))
                 # batch lr scheduler
                 self._run_scheduler(metrics=loss.item(), step=self._iteration, type='batch_step')
                 # Set progress bar
@@ -324,43 +324,44 @@ class Trainer:
                         self._info_meter.reset(keep_history=False)
 
     def evaluate(self, dataloader: Iterable):
-        """
-        Evaluate the model.
-
-        :param dataloader: A DataLoader object to iterate over the data.
-
-        """
         result = dict()
-        # Get total number of batch
-        num_batch = len(dataloader)
-        valid_loss_meter = AverageMeter()
-        for metric in self._task.metrics:
-            metric.reset()
-        with torch.no_grad():
-            self._model.eval()
-            with tqdm(enumerate(dataloader), total=num_batch,
-                  disable=not self._verbose) as pbar:
-                for step, (inputs, targets) in pbar:
-                    outputs = self._model(inputs)
-                    loss = self._caculate_loss(inputs, outputs, targets)
-                    valid_loss_meter.update(loss.item())
-                    outputs = outputs.detach().cpu()
-                    if self._metric_proxy:
-                        for metric in self._task.metrics:
-                            if isinstance(metric, BaseMetric):
-                                metric.update(*self._metric_proxy(inputs, targets, outputs))
-                    else:
-                        for metric in self._task.metrics:
-                            if isinstance(metric, BaseMetric):
-                                metric.update(targets["target"].detach().cpu().numpy().tolist(), outputs.numpy().tolist())
-            self._model.train()
-
+        y_true, y_pred, id_left = self.predicts(dataloader)
         for metric in self._task.metrics:
             if isinstance(metric, BaseMetric):
-                result[str(metric)] = metric.result()
-        self._info_meter.update('valid_loss', valid_loss_meter.avg)
-        result['loss'] = valid_loss_meter.avg
+                result[str(metric)] = self._eval_metric_on_data_frame(metric, id_left, y_true, y_pred)
         return result
+
+    @classmethod
+    def _eval_metric_on_data_frame(
+        cls,
+        metric: BaseMetric,
+        id_left: typing.Any,
+        y_true: typing.Union[list, np.array],
+        y_pred: typing.Union[list, np.array]
+    ):
+        """
+        Eval metric on data frame.
+
+        This function is used to eval metrics for `Ranking` task.
+
+        :param metric: Metric for `Ranking` task.
+        :param id_left: id of input left. Samples with same id_left should
+            be grouped for evaluation.
+        :param y_true: Labels of dataset.
+        :param y_pred: Outputs of model.
+        :return: Evaluation result.
+
+        """
+        eval_df = pd.DataFrame(data={
+            'id': id_left,
+            'true': y_true,
+            'pred': y_pred
+        })
+        assert isinstance(metric, BaseMetric)
+        val = eval_df.groupby(by='id').apply(
+            lambda df: metric(df['true'].values, df['pred'].values)
+        ).mean()
+        return val
 
     def predicts(
         self,
@@ -377,17 +378,19 @@ class Trainer:
         num_batch = len(dataloader)
         with torch.no_grad():
             self._model.eval()
+            id_left = []
             predictions = []
             targets = []
             with tqdm(enumerate(dataloader), total=num_batch,
                 disable=not self._verbose) as pbar:
                 for step, (inputs, target) in pbar:
-                    outputs = self._model(inputs).detach().cpu()
-                    target = target["target"].detach().cpu()
-                    predictions.append(outputs)
-                    targets.append(target)
+                    outputs = self._model(inputs).detach().cpu().numpy().tolist()
+                    target = target["target"].detach().cpu().numpy().tolist()
+                    predictions.extend(outputs)
+                    targets.extend(target)
+                    id_left.extend(inputs['id_left'])
             self._model.train()
-            return targets, predictions
+            return targets, predictions, id_left
 
     def predict(
         self,

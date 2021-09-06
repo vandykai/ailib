@@ -46,7 +46,7 @@ class MSE(RegressionMetric):
         """
         y_true = np.array(y_true, dtype=np.float64)
         y_pred = np.array(y_pred, dtype=np.float64)
-        return np.square(y_true - y_pred)
+        return np.square(y_true - y_pred).tolist()
 
     def update(self, y_true: list, y_pred: list):
         mses = self._compute(y_true, y_pred)

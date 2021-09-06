@@ -27,7 +27,7 @@ class RankCrossEntropyLoss(nn.Module):
         :return: Rank cross loss.
         """
 
-        # change [[pos], [neg], [neg], [neg],...,[pos], [neg], [neg], [neg],...]] to [[pos, neg, neg, neg,...],[pos, neg, neg, neg,...]]
+        # change [pos, neg, neg, neg,...,pos, neg, neg, neg,...]] to [[pos, neg, neg, neg,...],[pos, neg, neg, neg,...]]
         logits = y_pred.reshape(-1, self.num_neg + 1)
         labels = y_true.reshape(-1, self.num_neg + 1)
         return -torch.sum(labels * torch.log_softmax(logits, dim=-1), dim=-1).mean()

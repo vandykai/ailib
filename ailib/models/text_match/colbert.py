@@ -38,10 +38,16 @@ class Model(BaseModel):
     ColBERT model.
 
     Examples:
+        >>> from ailib.tasks.ranking import RankingTask
+        >>> from ailib.loss_function import RankHingeLoss
         >>> model_param = ModelParam()
+        >>> ranking_task = RankingTask(losses= RankHingeLoss())
+        >>> model_param['task'] = ranking_task
+        >>> model_param['tokenizer'] = tokenizer
         >>> model_param['pretrained_model_path'] = 'albert_chinese_tiny'
+        >>> model_param['pretrained_model_out_dim'] = 768
+        >>> model_param['similarity_metric'] = "l2"
         >>> model = Model(model_param.to_config())
-
     """
     def __init__(self, config):
         """
@@ -62,6 +68,7 @@ class Model(BaseModel):
     def query(self, input_ids):
         Q = self.bert(input_ids)[0]
         Q = self.linear(Q)
+        #[batch_size, input_len, hidden_dim]
         Q = torch.nn.functional.normalize(Q, p=2, dim=2)
         return Q
 
@@ -70,6 +77,7 @@ class Model(BaseModel):
         D = self.linear(D)
         mask = torch.tensor(self.mask(input_ids), device=input_ids.device).unsqueeze(2).float()
         D = D * mask
+        #[batch_size, input_len, hidden_dim]
         D = torch.nn.functional.normalize(D, p=2, dim=2)
         return D
 

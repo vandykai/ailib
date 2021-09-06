@@ -1,5 +1,6 @@
 # from .dense_baseline import DenseBaseline
 from .dssm import Model as DSSM
+from .multihead_attention_dssm import Model as MultiheadAttentionDSSM
 # from .cdssm import CDSSM
 # from .drmm import DRMM
 # from .drmmtks import DRMMTKS

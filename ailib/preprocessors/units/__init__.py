@@ -16,3 +16,6 @@ from .character_index import CharacterIndex
 from .word_exact_match import WordExactMatch
 from .truncated_length import TruncatedLength
 from .batch_padding import BatchPadding2D, BatchPadding3D
+from .html_removal import HTMLRemoval
+from .latex_convert import LatexConvert
+from .text_normalize import TextNormalize

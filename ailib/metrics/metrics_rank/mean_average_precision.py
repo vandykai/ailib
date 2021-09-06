@@ -27,7 +27,6 @@ class MeanAveragePrecision(RankingMetric):
     def _compute(self, y_true: list, y_pred: list) -> float:
         result = 0.
         pos = 0
-        y_pred = [subitem for item in y_pred for subitem in item]
         coupled_pair = sort_and_couple(y_true, y_pred)
         for idx, (label, score) in enumerate(coupled_pair):
             if label > self._threshold:
@@ -48,7 +47,7 @@ class MeanAveragePrecision(RankingMetric):
 
         Example:
             >>> y_true = [0, 1, 0, 0]
-            >>> y_pred = [[0.1], [0.6], [0.2], [0.3]]
+            >>> y_pred = [0.1, 0.6, 0.2, 0.3]
             >>> MeanAveragePrecision()(y_true, y_pred)
             1.0
 

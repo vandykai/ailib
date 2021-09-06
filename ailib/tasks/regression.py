@@ -23,6 +23,12 @@ class RegressionTask(BaseTask):
     def __init__(self, **kwargs):
         """Regression task."""
         super().__init__(**kwargs)
+        self._num_classes = 1
+
+    @property
+    def num_classes(self) -> int:
+        """:return: number of classes to classify."""
+        return self._num_classes
 
     @classmethod
     def list_available_losses(cls) -> list:

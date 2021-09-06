@@ -4,7 +4,7 @@ from tqdm import tqdm
 import typing
 
 from . import units
-from .base_preprocessor import BasePreprocessor
+from .base_rank_preprocessor import BaseRankPreprocessor
 from .utils import build_vocab_unit
 from .utils import build_unit_from_data_pack
 from .utils import chain_transform
@@ -16,7 +16,7 @@ from ailib.data_pack import DataPack
 tqdm.pandas()
 
 
-class BasicPreprocessor(BasePreprocessor):
+class BasicRankPreprocessor(BaseRankPreprocessor):
     """
     Baisc preprocessor helper.
 

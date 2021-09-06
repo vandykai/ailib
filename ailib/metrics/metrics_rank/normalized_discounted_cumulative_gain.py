@@ -34,9 +34,8 @@ class NormalizedDiscountedCumulativeGain(RankingMetric):
         :param y_pred: The predicted scores of each document.
         :return: Accuracy list.
         """
-        print(y_pred)
         dcg_metric = DiscountedCumulativeGain(k=self._k, threshold=self._threshold)
-        idcg_val = dcg_metric(y_true, [[item] for item in y_true])
+        idcg_val = dcg_metric(y_true, y_true)
         dcg_val = dcg_metric(y_true, y_pred)
         return dcg_val / idcg_val if idcg_val != 0 else 0.
 

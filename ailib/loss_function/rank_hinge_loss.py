@@ -51,7 +51,7 @@ class RankHingeLoss(nn.Module):
         :param y_true: Label. [N*(num_pos+num_neg)]
         :return: Hinge loss computed by user-defined margin.
         """
-        y_pos = y_pred[y_true > 0.5].squeeze(dim=-1)
+        y_pos = y_pred[y_true > 0.5]
         y_neg = y_pred[y_true < 0.5]
         y_neg = y_neg.reshape(-1, self.num_neg)
         y_neg = torch.mean(y_neg, dim=-1)

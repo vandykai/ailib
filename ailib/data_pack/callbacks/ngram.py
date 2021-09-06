@@ -8,7 +8,7 @@ class Ngram(BaseCallback):
     """
     Generate the character n-gram for data.
 
-    :param preprocessor: The fitted :class:`BasePreprocessor` object, which
+    :param preprocessor: The fitted :class:`BaseRankPreprocessor` object, which
          contains the n-gram units information.
     :param mode: It can be one of 'index', 'onehot', 'sum' or 'aggregate'.
 
@@ -30,7 +30,7 @@ class Ngram(BaseCallback):
 
     def __init__(
         self,
-        preprocessor: preprocessors.BasicPreprocessor,
+        preprocessor: preprocessors.BasicRankPreprocessor,
         mode: str = 'index'
     ):
         """Init."""
@@ -54,8 +54,6 @@ class Ngram(BaseCallback):
             for term in row:
                 x['ngram_right'][idx].append(self._word_to_ngram[term])
         if self._mode == 'aggregate':
-            print(len(x['ngram_left']))
-            print(np.array(x['ngram_right'][0]).shape)
             x['ngram_left'] = [list(np.sum(row, axis=0))
                                for row in x['ngram_left']]
             x['ngram_right'] = [list(np.sum(row, axis=0))

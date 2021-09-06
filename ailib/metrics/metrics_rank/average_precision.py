@@ -41,7 +41,7 @@ class AveragePrecision(RankingMetric):
 
         Example:
             >>> y_true = [0, 1]
-            >>> y_pred = [[0.1], [0.6]]
+            >>> y_pred = [0.1, 0.6]
             >>> round(AveragePrecision()(y_true, y_pred), 2)
             0.75
             >>> round(AveragePrecision()([], []), 2)

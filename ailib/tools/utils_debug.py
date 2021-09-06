@@ -6,6 +6,9 @@ logger = logging.getLogger('__ailib__')
 class NanDetector:
     """
     Detects the first NaN or Inf in forward and/or backward pass and logs, together with the module name
+    Example:
+        >>> model = Model(config)
+        >>> NanDetector(model) # already add model hooks to detect NAN
     """
 
     def __init__(self, model, forward=True, backward=True):

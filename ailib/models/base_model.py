@@ -47,13 +47,11 @@ class BaseModel(nn.Module):
     ) -> nn.Module:
         """:return: a correctly shaped torch module for model output."""
         task = self.config.task
-        if isinstance(task, (tasks.ClassificationTask, tasks.ClassificationMultiLabelTask)):
-            out_features = task.num_classes
-        elif isinstance(task, tasks.RankingTask):
+        if isinstance(task, tasks.RankingTask):
             out_features = 1
         else:
-            raise ValueError(f"{task} is not a valid task type. "
-                             f"Must be in `Ranking` and `Classification`.")
+            out_features = task.num_classes
+    
         if self.config.out_activation_func:
             return nn.Sequential(
                 nn.Linear(in_features, out_features),

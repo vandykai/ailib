@@ -21,9 +21,9 @@ def validate_context(func):
     return transform_wrapper
 
 
-class BasePreprocessor(metaclass=abc.ABCMeta):
+class BaseRankPreprocessor(metaclass=abc.ABCMeta):
     """
-    :class:`BasePreprocessor` to input handle data.
+    :class:`BaseRankPreprocessor` to input handle data.
 
     A preprocessor should be used in two steps. First, `fit`, then,
     `transform`. `fit` collects information into `context`, which includes
@@ -46,11 +46,12 @@ class BasePreprocessor(metaclass=abc.ABCMeta):
         """Return context."""
         return self._context
 
+    @abc.abstractmethod
     def fit(
         self,
-        data: str,
+        data_pack: DataPack,
         verbose: int = 1
-    ) -> 'BasePreprocessor':
+    ) -> 'BaseRankPreprocessor':
         """
         Fit parameters on input data.
 
@@ -60,41 +61,40 @@ class BasePreprocessor(metaclass=abc.ABCMeta):
         This method is expected to return itself as a callable
         object.
 
-        :param data: :class:`str` object to be fitted.
+        :param data_pack: :class:`Datapack` object to be fitted.
         :param verbose: Verbosity.
         """
-        return data
 
     @abc.abstractmethod
     def transform(
         self,
-        data: str,
+        data_pack: DataPack,
         verbose: int = 1
-    ) -> str:
+    ) -> DataPack:
         """
         Transform input data to expected manner.
 
         This method is an abstract base method, need to be
         implemented in the child class.
 
-        :param data_pack: :class:`str` object to be transformed.
+        :param data_pack: :class:`DataPack` object to be transformed.
         :param verbose: Verbosity.
             or list of text-left, text-right tuples.
         """
 
     def fit_transform(
         self,
-        data: str,
+        data_pack: DataPack,
         verbose: int = 1
-    ) -> str:
+    ) -> DataPack:
         """
         Call fit-transform.
 
         :param data_pack: :class:`DataPack` object to be processed.
         :param verbose: Verbosity.
         """
-        return self.fit(data, verbose=verbose) \
-            .transform(data, verbose=verbose)
+        return self.fit(data_pack, verbose=verbose) \
+            .transform(data_pack, verbose=verbose)
 
     def save(self, dirpath: typing.Union[str, Path]):
         """
@@ -133,5 +133,5 @@ def load_preprocessor(dirpath: typing.Union[str, Path]) -> DataPack:
     """
     dirpath = Path(dirpath)
 
-    data_file_path = dirpath.joinpath(BasePreprocessor.DATA_FILENAME)
+    data_file_path = dirpath.joinpath(BaseRankPreprocessor.DATA_FILENAME)
     return dill.load(open(data_file_path, 'rb'))

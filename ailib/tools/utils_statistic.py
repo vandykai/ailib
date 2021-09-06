@@ -70,7 +70,6 @@ def grad_norm(parameters: _tensor_or_tensors, norm_type: float = 2.0) -> torch.T
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
     parameters = [p for p in parameters if p.grad is not None]
-    norm_type = float(norm_type)
     if len(parameters) == 0:
         return 0.
     with torch.no_grad():
@@ -96,12 +95,8 @@ def regularization(parameters: _tensor_or_tensors, norm_type: float = 2.0):
     """
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
-    norm_type = float(norm_type)
     mean_norm = torch.mean(torch.stack([torch.norm(p, norm_type) for p in parameters]))
     return mean_norm
-
-import numpy as np
-import random
 
 class BeyesianSmooth(object):
     r"""
