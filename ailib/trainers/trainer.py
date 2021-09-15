@@ -21,6 +21,8 @@ from ailib.tools.utils_time import Timer
 from ailib.tools.utils_init import init_logger
 from ailib.strategy import EarlyStopping
 from ailib.tools.utils_statistic import grad_norm
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
 
 logger = logging.getLogger('__ailib__')
 
@@ -160,8 +162,8 @@ class Trainer:
         self._model_name = model.config.model_name
         if isinstance(device, list) and len(device):
             self._data_parallel = True
-            self._model = torch.nn.DataParallel(self._model, device_ids=device)
             self._device = device[0]
+            self._model = torch.nn.DataParallel(self._model, device_ids=device, output_device=self._device)
         else:
             if not (isinstance(device, torch.device) or isinstance(device, int) or isinstance(device, str)):
                 device = torch.device(
@@ -187,7 +189,7 @@ class Trainer:
 
         """
         if not save_dir:
-            save_dir = Path("./outputs")/self._model_name/time.strftime("%Y-%m-%d-%H-%M",time.localtime(time.time()))
+            save_dir = Path("./outputs")/self._model_name/time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime(time.time()))
 
         self._save_dir = Path(save_dir)
         # Restore from checkpoint
@@ -252,7 +254,7 @@ class Trainer:
             loss = torch.sum(
                 *[self._loss_proxy(c, inputs, outputs, targets) for c in self._criterions]
             )
-        elif hasattr(self._model,'loss'):
+        elif hasattr(self._model, 'loss'):
             loss = self._model.loss(inputs, outputs, targets)
         else:
             loss = torch.sum(
@@ -282,6 +284,13 @@ class Trainer:
                 # Caculate all losses and sum them up
                 loss = self._caculate_loss(inputs, outputs, targets)
                 self._backward(loss)
+
+                self._model.attack() # 在embedding上添加对抗扰动
+                outputs = self._model(inputs)
+                loss_adv = self._caculate_loss(inputs, outputs, targets)
+                self._backward(loss_adv)
+                self._model.restore() # 恢复embedding参数
+
                 self._info_meter.update("train_loss", loss.item())
                 self._info_meter.update("grad_norm", grad_norm(self._model.parameters(), float('inf')))
                 # batch lr scheduler
@@ -492,3 +501,17 @@ class Trainer:
 
     def load_best_model(self, model_path="model.pt"):
         return self.restore_model(self._save_dir.joinpath(model_path))
+
+    def plot_learning_curve(self, title='loss', ylim=(0, 5)):
+        total_steps = len(self._info_meter.vals['train_loss'])
+        x_1 = range(total_steps)
+        x_2 = np.linspace(0, total_steps, len(self._info_meter.vals['valid_loss'])).round()
+        figure(figsize=(6, 4))
+        plt.plot(x_1, self._info_meter.vals['train_loss'], c='tab:red', label='train_loss')
+        plt.plot(x_2, self._info_meter.vals['valid_loss'], c='tab:cyan', label='valid_loss')
+        plt.ylim(*ylim)
+        plt.xlabel('Training steps')
+        plt.ylabel('loss')
+        plt.title(f'{title} learning curve')
+        plt.legend()
+        plt.show()
