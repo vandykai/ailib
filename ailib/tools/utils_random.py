@@ -69,9 +69,7 @@ def rationed_split(examples, train_ratio, test_ratio, val_ratio, rnd=None):
         >>> train_ratio, test_ratio, val_ratio = 0.7, 0.2, 0.1
         >>> rnd = torchtext.data.dataset.RandomShuffler(None)
         >>> train_examples, test_examples, valid_examples = \
-                torchtext.data.dataset.rationed_split(examples, train_ratio,
-                                                      test_ratio, val_ratio,
-                                                      rnd)
+                rationed_split(examples, train_ratio, test_ratio, val_ratio, rnd)
     """
     N = len(examples)
     if not rnd:
@@ -108,9 +106,7 @@ def rationed_split_df(df_examples, train_ratio, test_ratio, val_ratio, rnd=None)
         >>> train_ratio, test_ratio, val_ratio = 0.7, 0.2, 0.1
         >>> rnd = torchtext.data.dataset.RandomShuffler(None)
         >>> train_examples, test_examples, valid_examples = \
-                torchtext.data.dataset.rationed_split(examples, train_ratio,
-                                                      test_ratio, val_ratio,
-                                                      rnd)
+                rationed_split(examples, train_ratio, test_ratio, val_ratio, rnd)
     """
     N = len(df_examples)
     if not rnd:

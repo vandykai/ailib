@@ -284,13 +284,6 @@ class Trainer:
                 # Caculate all losses and sum them up
                 loss = self._caculate_loss(inputs, outputs, targets)
                 self._backward(loss)
-
-                self._model.attack() # 在embedding上添加对抗扰动
-                outputs = self._model(inputs)
-                loss_adv = self._caculate_loss(inputs, outputs, targets)
-                self._backward(loss_adv)
-                self._model.restore() # 恢复embedding参数
-
                 self._info_meter.update("train_loss", loss.item())
                 self._info_meter.update("grad_norm", grad_norm(self._model.parameters(), float('inf')))
                 # batch lr scheduler
@@ -350,10 +343,13 @@ class Trainer:
             with tqdm(enumerate(dataloader), total=num_batch,
                   disable=not self._verbose) as pbar:
                 for step, (inputs, targets) in pbar:
-                    outputs = self._model(inputs)
-                    loss = self._caculate_loss(inputs, outputs, targets)
+                    if hasattr(self._model, 'evaluate'):
+                        outputs, loss = self._model.evaluate(inputs, targets)
+                    else:
+                        outputs = self._model(inputs)
+                        loss = self._caculate_loss(inputs, outputs, targets)
+                        outputs = outputs.detach().cpu()
                     valid_loss_meter.update(loss.item())
-                    outputs = outputs.detach().cpu()
                     if self._metric_proxy:
                         for metric in self._task.metrics:
                             if isinstance(metric, BaseMetric):
@@ -391,7 +387,10 @@ class Trainer:
             with tqdm(enumerate(dataloader), total=num_batch,
                 disable=not self._verbose) as pbar:
                 for step, (inputs, target) in pbar:
-                    outputs = self._model(inputs).detach().cpu()
+                    if hasattr(self._model, 'predict'):
+                        outputs = self._model.predict(inputs)
+                    else:
+                        outputs = self._model(inputs).detach().cpu()
                     target = target["target"].detach().cpu()
                     predictions.append(outputs)
                     targets.append(target)

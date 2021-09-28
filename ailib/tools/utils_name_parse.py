@@ -3,6 +3,7 @@ import typing
 import torch
 from torch import nn
 from torch import optim
+from ailib.tools.utils_inheritance import list_recursive_concrete_subclasses
 
 from ailib.metrics.base_metric import *
 
@@ -184,7 +185,7 @@ def _parse_metric(
     """
     if isinstance(metric, str):
         metric = metric.lower()  # ignore case
-        for subclass in Metrix.__subclasses__():
+        for subclass in list_recursive_concrete_subclasses(Metrix):
             if metric == subclass.ALIAS or metric in subclass.ALIAS:
                 return subclass()
     elif isinstance(metric, Metrix):
@@ -235,9 +236,11 @@ def parse_metric(
         return _parse_metric(metric, ClassificationMultiLabelMetric)
     if task == 'regression':
         return _parse_metric(metric, RegressionMetric)
+    if task == 'ner':
+        return _parse_metric(metric, NerMetric)
     else:
         raise ValueError(
-            'Should be a [ranking, classification, classification_multi_label, regression] task.'
+            'Should be a [ranking, classification, classification_multi_label, regression, ner] task.'
         )
 
 

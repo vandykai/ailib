@@ -20,15 +20,15 @@ def put_snippets(code_snippet, prefix, description, method=""):
             snippet["body"].append("")
             snippet["body"].extend(default_snippets_struct["body"])
             with open(os.path.join(current_path, "data", prefix+".json"), "w") as f:
-                f.write(json.dumps(snippet, indent=4))
+                f.write(json.dumps(snippet, ensure_ascii=False, indent=4))
         elif method == "replace":
             with open(os.path.join(current_path, "data", prefix+".json"), "w") as f:
-                f.write(json.dumps(default_snippets_struct, indent=4))
+                f.write(json.dumps(default_snippets_struct, ensure_ascii=False, indent=4))
         else:
             print("prefix already in snippets")
     else:
         with open(os.path.join(current_path, "data", prefix+".json"), "w") as f:
-            f.write(json.dumps(default_snippets_struct, indent=4))
+            f.write(json.dumps(default_snippets_struct, ensure_ascii=False, indent=4))
 
 def get_snippets(prefix=""):
     snippets = {}

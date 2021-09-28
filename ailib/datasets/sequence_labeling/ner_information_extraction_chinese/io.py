@@ -2,7 +2,7 @@ import os
 
 current_path = os.path.dirname(__file__)
 
-def get_data(file_path):
+def _load_data(file_path):
     examples = []
     with open(file_path) as f:
         words = []
@@ -20,7 +20,9 @@ def get_data(file_path):
                 if len(line_splitd) != 0:
                     print(line)
     return examples
-# 数据格式 [(words, tags), ...]
-data_train = get_data(os.path.join(current_path, "data/example.train"))
-data_dev = get_data(os.path.join(current_path, "data/example.dev"))
-data_test = get_data(os.path.join(current_path, "data/example.test"))
+def get_data():
+    # 数据格式 [(words, tags), ...]
+    data_train = _load_data(os.path.join(current_path, "data/example.train"))
+    data_dev = _load_data(os.path.join(current_path, "data/example.dev"))
+    data_test = _load_data(os.path.join(current_path, "data/example.test"))
+    return data_train, data_dev, data_test

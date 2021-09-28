@@ -3,7 +3,7 @@ import json
 
 current_path = os.path.dirname(__file__)
 
-def get_data(file_path):
+def _load_data(file_path):
     examples = []
     with open(file_path, 'r') as f:
         idx = 0
@@ -25,7 +25,9 @@ def get_data(file_path):
                                 tags[start_index + 1:end_index + 1] = ['I-' + key] * (len(sub_name) - 1)
             examples.append((words, tags))
     return examples
-# 数据格式 [(words, tags), ...]
-data_train = get_data(os.path.join(current_path, "data/train.json"))
-data_dev = get_data(os.path.join(current_path, "data/dev.json"))
-data_test = get_data(os.path.join(current_path, "data/test.json"))
+def get_data():
+    # 数据格式 [(words, tags), ...]
+    data_train = _load_data(os.path.join(current_path, "data/train.json"))
+    data_dev = _load_data(os.path.join(current_path, "data/dev.json"))
+    data_test = _load_data(os.path.join(current_path, "data/test.json"))
+    return data_train, data_dev, data_test

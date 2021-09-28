@@ -69,3 +69,8 @@ class RegressionMetric(BaseMetric):
     """Regression metric base class."""
 
     ALIAS = 'regression_metric'
+
+class NerMetric(BaseMetric):
+    """Regression metric base class."""
+
+    ALIAS = 'ner_metric'

@@ -1,7 +1,7 @@
 import torch
 
 class FGM():
-    def __init__(self, model, epsilon=1., emb_name='embeddings'):
+    def __init__(self, model: torch.nn.Module, epsilon: int = 1., emb_name: str = 'embeddings'):
         """
         Example:
             >>> FGM(model)
@@ -46,7 +46,7 @@ class FGM():
         self.backup = {}
 
 class PGD():
-    def __init__(self, model, epsilon=1., alpha=0.3, emb_name='embeddings'):
+    def __init__(self, model: torch.nn.Module, epsilon: int = 1., alpha: int = 0.3, emb_name: str = 'embeddings'):
         # emb_name这个参数要换成你模型中embedding的参数名
         """
         Example: 
