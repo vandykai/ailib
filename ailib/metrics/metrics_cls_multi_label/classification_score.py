@@ -100,7 +100,7 @@ class ClassificationMultiLabelScore(ClassificationMultiLabelMetric):
 
         jaccard, precision, recall = self._compute_score(self.origins, self.founds, self.rights, self.mix_origins)
         f1 = 0. if recall + precision == 0 else (2 * precision * recall) / (precision + recall)
-        return {'jaccard': round(jaccard, 4), "precision":round(precision, 4), "recall":round(recall, 4), "f1":round(f1, 4)}, class_info
+        return {'_score':jaccard, 'jaccard': round(jaccard, 4), "precision":round(precision, 4), "recall":round(recall, 4), "f1":round(f1, 4), 'class_info':class_info}
 
 
 

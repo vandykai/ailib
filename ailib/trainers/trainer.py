@@ -23,6 +23,7 @@ from ailib.strategy import EarlyStopping
 from ailib.tools.utils_statistic import grad_norm
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
+import json
 
 logger = logging.getLogger('__ailib__')
 
@@ -309,11 +310,11 @@ class Trainer:
                             })
                     self._last_result = self.evaluate(self._validloader)
                     if self._verbose:
-                        logger.info({'validation':{k: v for k, v in self._last_result.items()}})
+                        logger.info(json.dumps({'validation':{k: v for k, v in self._last_result.items()}}, indent=2, ensure_ascii=False))
                     # Early stopping
-                    self._early_stopping.update(self._last_result[self._key])
+                    self._early_stopping.update(self._last_result[self._key]['_score'])
                     # epoch lr scheduler
-                    self._run_scheduler(metrics=self._last_result[self._key], step=self._epoch, type='epoch_step')
+                    self._run_scheduler(metrics=self._last_result[self._key]['_score'], step=self._epoch, type='epoch_step')
                     if self._early_stopping.should_stop_early:
                         logger.info(f'Ran out of patience after {self._epoch} epoch. Stop training...')
                         break
@@ -364,7 +365,7 @@ class Trainer:
             if isinstance(metric, BaseMetric):
                 result[str(metric)] = metric.result()
         self._info_meter.update('valid_loss', valid_loss_meter.avg)
-        result['loss'] = valid_loss_meter.avg
+        result['loss'] = {'_score':valid_loss_meter.avg}
         return result
 
     def predicts(

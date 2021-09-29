@@ -53,4 +53,4 @@ class MeanReciprocalRank(RankingMetric):
         return self._compute(y_true, y_pred)
 
     def result(self):
-        return np.mean(self.mrrs).item()
+        return {'_score':np.mean(self.mrrs).item()}

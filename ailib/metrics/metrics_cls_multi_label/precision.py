@@ -54,4 +54,4 @@ class PrecisionMultiLabel(ClassificationMultiLabelMetric):
         self.precisions.extend(precisions)
 
     def result(self):
-        return np.mean(self.precisions).item()
+        return {'_score':np.mean(self.precisions).item()}

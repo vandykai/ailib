@@ -71,4 +71,4 @@ class DiscountedCumulativeGain(RankingMetric):
         return self._compute(y_true, y_pred)
 
     def result(self):
-        return np.mean(self.dcgs).item()
+        return {'_score':np.mean(self.dcgs).item()}

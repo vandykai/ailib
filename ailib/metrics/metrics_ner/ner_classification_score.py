@@ -79,7 +79,7 @@ class SpanEntityScore(NerMetric):
         found = len(self.founds)
         right = len(self.rights)
         recall, precision, f1 = self._compute_score(origin, found, right)
-        return {'acc': precision, 'recall': recall, 'f1': f1, "support":origin}, class_info
+        return {'_score':precision, 'acc': precision, 'recall': recall, 'f1': f1, "support":origin, 'class_info':class_info}
 
     def update(self, y_true: list, y_pred: list):
         '''

@@ -70,4 +70,4 @@ class NormalizedDiscountedCumulativeGain(RankingMetric):
         return self._compute(y_true, y_pred)
 
     def result(self):
-        return np.mean(self.ndcgs).item()
+        return {'_score':np.mean(self.ndcgs).item()}

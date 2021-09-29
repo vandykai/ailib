@@ -34,7 +34,7 @@ class BaseMetric(abc.ABC):
     def result(self):
         y_true = [ex for item in self.y_trues for ex in item]
         y_pred = [ex for item in self.y_preds for ex in item]
-        return self(y_true, y_pred)
+        return {'_score':self(y_true, y_pred)}
 
     @abc.abstractmethod
     def __repr__(self):

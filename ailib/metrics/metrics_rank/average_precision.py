@@ -53,4 +53,4 @@ class AveragePrecision(RankingMetric):
         """
 
     def result(self):
-        return np.mean(self.aps).item()
+        return {'_score':np.mean(self.aps).item()}

@@ -55,7 +55,8 @@ valid_loader = DataLoader(dataset_dev, batch_size=train_config['batch_size'], sh
 test_loader = DataLoader(dataset_test, batch_size=1, shuffle=False, collate_fn=train_pad_collate)
 
 model_param = TransformerParam()
-model_param['task'] = ClassificationTask(num_classes = 3, metrics = ['acc'])
+1/0.242, 1/0.138, 1/0.962
+model_param['task'] = ClassificationTask(num_classes = 3, losses = [nn.CrossEntropyLoss(weight=torch.tensor([3., 3., 1.], device=train_config['device']))], metrics = ['kappa', 'acc'])
 model_param['pretrained_model_out_dim'] = 768
 model_param['pretrained_model_path'] = train_config['pretrained_model_path']
 model = Transformer(model_param.to_config()).to(train_config['device'])

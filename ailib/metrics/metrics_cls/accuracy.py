@@ -54,4 +54,4 @@ class Accuracy(ClassificationMetric):
         self.accuracys.extend(accuracys)
 
     def result(self):
-        return np.mean(self.accuracys).item()
+        return {'_score':np.mean(self.accuracys).item()}

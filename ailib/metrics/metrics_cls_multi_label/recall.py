@@ -54,4 +54,4 @@ class RecallMultiLabel(ClassificationMultiLabelMetric):
         self.recalls.extend(recalls)
 
     def result(self):
-        return np.mean(self.recalls).item()
+        return {'_score':np.mean(self.recalls).item()}

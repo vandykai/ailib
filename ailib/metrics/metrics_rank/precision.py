@@ -68,4 +68,4 @@ class Precision(RankingMetric):
         return self._compute(y_true, y_pred)
 
     def result(self):
-        return np.mean(self.precisions).item()
+        return {'_score':np.mean(self.precisions).item()}

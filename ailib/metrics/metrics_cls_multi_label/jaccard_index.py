@@ -54,4 +54,4 @@ class JaccardMultiLabel(ClassificationMultiLabelMetric):
         self.jaccards.extend(jaccards)
 
     def result(self):
-        return np.mean(self.jaccards).item()
+        return {'_score':np.mean(self.jaccards).item()}

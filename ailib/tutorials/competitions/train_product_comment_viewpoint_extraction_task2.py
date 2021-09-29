@@ -107,8 +107,10 @@ trainer = Trainer(model=model,
                   metric_proxy = metric_proxy,
                   #validate_interval=10
                 )
-#trainer.run()
+trainer.run()
+trainer.load_best_model()
 #trainer.restore_model('outputs/LSTM-CRF/2021-09-27-13-46-08/model.pt')
+trainer.evaluate(valid_loader)
 targets, predictions = trainer.predicts(test_loader)
 targets = [ex for batch in targets for ex in batch]
 predictions = [ex for batch in predictions for ex in batch]

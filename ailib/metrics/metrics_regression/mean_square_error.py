@@ -53,4 +53,4 @@ class MSE(RegressionMetric):
         self.mses.extend(mses)
 
     def result(self):
-        return np.mean(self.mses).item()
+        return {'_score':np.mean(self.mses).item()}
