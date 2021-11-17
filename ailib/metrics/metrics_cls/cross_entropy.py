@@ -22,7 +22,7 @@ class CrossEntropy(ClassificationMetric):
         eps: float = 1e-12
     ) -> float:
         """
-        Calculate cross entropy.
+        Calculate CrossEntropy.
 
         Example:
             >>> y_true = [0, 1]
@@ -30,8 +30,8 @@ class CrossEntropy(ClassificationMetric):
             >>> CrossEntropy()(y_true, y_pred)
             0.7458274358333028
 
-        :param y_true: The ground true label of each document.
-        :param y_pred: The predicted scores of each document.
+        :param y_true: The ground true label of each example.
+        :param y_pred: The predicted scores of each example.
         :param eps: The Log loss is undefined for p=0 or p=1,
             so probabilities are clipped to max(eps, min(1 - eps, p)).
         :return: Average precision.

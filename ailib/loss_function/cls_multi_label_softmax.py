@@ -11,7 +11,7 @@ class SoftmaxMultiLabelLoss(nn.Module):
         super().__init__()
 
     def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor):
-        r"""Early Learning Regularization.
+        r"""Softmax MultiLabel Loss.
         Args
         * `y_pred` [[0.1, 0.9, 0.7], [0.8, 0.1, 0.1]].
         * `y_true` [[0, 0, 1], [1, 0, 0]].
@@ -23,6 +23,7 @@ class SoftmaxMultiLabelLoss(nn.Module):
             >>> y_true = torch.tensor([[0, 1, 1], [1, 0, 0]])
             >>> loss(a, b)
             tensor([1.3628, 1.5730])
+        Note: no need to add sigmoid or softmax layer at the end of model.
         """
         y_pred = (1 - 2 * y_true) * y_pred
         y_pred_neg = y_pred - y_true * 1e12

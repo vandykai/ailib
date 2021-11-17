@@ -29,8 +29,8 @@ class Accuracy(ClassificationMetric):
             >>> Accuracy()(y_true, y_pred)
             1.0
 
-        :param y_true: The ground true label of each document.
-        :param y_pred: The predicted scores of each document.
+        :param y_true: The ground true label of each example.
+        :param y_pred: The predicted scores of each example.
         :return: Accuracy.
         """
         accuracys = self._compute(y_true, y_pred)
@@ -40,8 +40,8 @@ class Accuracy(ClassificationMetric):
         """
         Calculate accuracy.
 
-        :param y_true: The ground true label of each document.
-        :param y_pred: The predicted scores of each document.
+        :param y_true: The ground true label of each example.
+        :param y_pred: The predicted scores of each example.
         :return: Accuracy list.
         """
         y_true = np.array(y_true, dtype=np.int8)

@@ -31,8 +31,8 @@ class ClassificationScore(ClassificationMetric):
             >>> metric.update(y_true, y_pred)
             >>> metric.result()
 
-        :param y_true: The ground true label of each document.
-        :param y_pred: The predicted scores of each document.
+        :param y_true: The ground true label of each example.
+        :param y_pred: The predicted scores of each example.
         :return: Score Info.
         """
         origins, founds, rights = self._compute(y_true, y_pred) 

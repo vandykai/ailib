@@ -1,4 +1,4 @@
-"""Accuracy metric for Classification."""
+"""Kappa metric for Classification."""
 import numpy as np
 from ailib.metrics.base_metric import ClassificationMetric
 from sklearn.metrics import cohen_kappa_score
@@ -22,8 +22,8 @@ class Kappa(ClassificationMetric):
             >>> Kappa()(y_true, y_pred)
             0.0
 
-        :param y_true: The ground true label of each document.
-        :param y_pred: The predicted scores of each document.
+        :param y_true: The ground true label of each example.
+        :param y_pred: The predicted scores of each example.
         :return: Kappa.
         """
         y_true = np.array(y_true, dtype=np.int8)

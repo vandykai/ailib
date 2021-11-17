@@ -19,4 +19,6 @@ def file_de_duplication_line(file_name):
 def save_to_file(json_list, file_name):
     with open(file_name, "w") as f:
         for item in json_list:
-            f.write(json.dumps(item, ensure_ascii=False)+'\n')
+            if type(item) != str:
+                item = json.dumps(item, ensure_ascii=False)
+            f.write(item+'\n')

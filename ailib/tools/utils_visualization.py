@@ -5,9 +5,12 @@ import seaborn as sns
 from collections import OrderedDict
 import torch.nn as nn
 import torch
+from matplotlib.pyplot import MultipleLocator
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score, confusion_matrix
+
 
 def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix'):
-    plt.figure(figsize=(16, 8), dpi=100)
+    plt.figure(figsize=(8, 4), dpi=100)
     np.set_printoptions(precision=2)
 
     # 在混淆矩阵中每格的概率值
@@ -47,6 +50,76 @@ def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix')
 def plot_heatmap(cm, classes, data_fmt='d'):
     df_cm = pd.DataFrame(cm, index = classes, columns =classes)
     return sns.heatmap(df_cm, annot=True, fmt=data_fmt)
+
+def plot_roc_curve(fpr: list, tpr: list):
+    ks = max(tpr-fpr)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr)
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.plot([0, 1-ks], [ks, 1], 'r--')
+    plt.text(0, ks, round(ks, 4), ha='right', va='center', fontsize=10)
+    plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC curve (area = {round(roc_auc, 4)}, ks={round(ks, 4)})')
+    #plt.legend(loc="lower right")
+    plt.show()
+
+def plot_ks_curve(fpr: list, tpr: list):
+    ks = max(tpr-fpr)
+    plt.plot(np.linspace(0, 1, num=len(tpr)), tpr-fpr)
+    #plt.plot([0, 1], [ks, ks], 'k--')
+    plt.text(0, ks, round(ks, 4), ha='right', va='center', fontsize=10)
+    plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
+    plt.gca().yaxis.set_major_locator(MultipleLocator(0.05))
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, ks])
+    plt.xlabel('example')
+    plt.ylabel('KS value')
+    plt.title(f'KS curve ks={round(ks, 4)})')
+    #plt.legend(loc="lower right")
+    plt.show()
+
+def plot_fpr_tpr_curve(fpr: list, tpr: list):
+    [fpr_plot] = plt.plot(np.linspace(0, 1, num=len(fpr)), fpr, 'b')
+    [tpr_plot] = plt.plot(np.linspace(0, 1, num=len(tpr)), tpr, 'r')
+    plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
+    plt.gca().yaxis.set_major_locator(MultipleLocator(0.1))
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('example')
+    plt.ylabel('tpr_fpr value')
+    plt.title(f'tpr fpr curve')
+    plt.legend(handles=[fpr_plot, tpr_plot], labels=['fpr','tpr'], loc='best')
+    plt.show()
+
+def plot_precision_recall_curve(precision, recall, average_precision):
+    plt.step(recall, precision, color='b', alpha=0.2, where='post')
+    plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.ylim([0.0, 1.05])
+    plt.xlim([0.0, 1.0])
+    plt.title('Precision-Recall: {0:0.6f}'.format(average_precision))
+    plt.show()
+
+def plot_cls_result(y_true: list, y_pred: list, pos_label=1):
+    y_true = np.array(y_true, dtype=np.int8)
+    y_pred = np.array(y_pred, dtype=np.float64)
+    y_score = y_pred[:, pos_label]
+    cm = confusion_matrix(y_true, y_score.round())
+    fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label, drop_intermediate=False)
+    plot_roc_curve(fpr, tpr)
+    plot_ks_curve(fpr, tpr)
+    plot_fpr_tpr_curve(fpr, tpr)
+    average_precision = average_precision_score(y_true, y_score)
+    precision, recall, _ = precision_recall_curve(y_true, y_score)
+    plot_precision_recall_curve(precision, recall, average_precision)
+    plot_confusion_matrix(cm, classes=[0,1])
+
+
 
 def print_decisition_path(text_feature, clf, text_feature_name):
     node_indicator = clf.decision_path(text_feature)
