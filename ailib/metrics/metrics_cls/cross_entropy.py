@@ -2,6 +2,7 @@
 import numpy as np
 from ailib.metrics.base_metric import ClassificationMetric
 from ailib.metrics.utils import one_hot
+from scipy.special import log_softmax
 
 class CrossEntropy(ClassificationMetric):
     """Cross entropy metric."""
@@ -28,7 +29,7 @@ class CrossEntropy(ClassificationMetric):
             >>> y_true = [0, 1]
             >>> y_pred = [[0.25, 0.25], [0.01, 0.90]]
             >>> CrossEntropy()(y_true, y_pred)
-            0.7458274358333028
+            0.518600924855578
 
         :param y_true: The ground true label of each example.
         :param y_pred: The predicted scores of each example.
@@ -36,8 +37,9 @@ class CrossEntropy(ClassificationMetric):
             so probabilities are clipped to max(eps, min(1 - eps, p)).
         :return: Average precision.
         """
-        y_pred = np.clip(y_pred, eps, 1. - eps)
+        y_pred = log_softmax(y_pred, axis=-1)
+        #y_pred = np.clip(y_pred, eps, 1. - eps)
         y_true = [
             one_hot(y, num_classes=y_pred.shape[1]) for y in y_true
         ]
-        return -np.sum(y_true * np.log(y_pred + 1e-9)) / y_pred.shape[0]
+        return -np.sum(y_true * y_pred) / y_pred.shape[0]

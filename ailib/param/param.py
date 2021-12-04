@@ -154,8 +154,8 @@ class Param(object):
             new_value = self._pre_assignment_hook(new_value)
         self._validate(new_value)
         self._value = new_value
-        if not self._pre_assignment_hook:
-            self._infer_pre_assignment_hook()
+        # if not self._pre_assignment_hook:
+        #     self._infer_pre_assignment_hook()
 
     @property
     def hyper_space(self) -> SpaceType:

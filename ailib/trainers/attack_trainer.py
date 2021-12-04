@@ -72,7 +72,7 @@ class Trainer(Trainer):
                     # put create dir here to avoid terminal stop and make empty dir
                     if not Path(self._save_dir).exists():
                         Path(self._save_dir).mkdir(parents=True)
-                        init_logger(self._save_dir.joinpath('train.log'))
+                        init_logger(log_file=self._save_dir.joinpath('train.log'))
                     if self._verbose:
                         logger.info({
                             "Epoch": f'{self._epoch}/{self._epochs}',

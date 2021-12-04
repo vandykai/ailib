@@ -276,7 +276,7 @@ class Trainer:
 
         """
         # Get total number of batch
-        num_batch = len(self._trainloader)
+        num_batch = len(self._trainloader) if hasattr(self._trainloader.dataset, '__len__') else None
         with tqdm(enumerate(self._trainloader), total=num_batch,
                   disable=not self._verbose) as pbar:
             self._model.train()
@@ -300,7 +300,7 @@ class Trainer:
                     # put create dir here to avoid terminal stop and make empty dir
                     if not Path(self._save_dir).exists():
                         Path(self._save_dir).mkdir(parents=True)
-                        init_logger(self._save_dir.joinpath('train.log'))
+                        init_logger(log_file=self._save_dir.joinpath('train.log'))
                     if self._verbose:
                         logger.info({
                             "Epoch": f'{self._epoch}/{self._epochs}',
@@ -335,7 +335,7 @@ class Trainer:
         """
         result = dict()
         # Get total number of batch
-        num_batch = len(dataloader)
+        num_batch = len(dataloader) if hasattr(dataloader.dataset, '__len__') else None
         valid_loss_meter = AverageMeter()
         for metric in self._task.metrics:
             metric.reset()
@@ -355,6 +355,10 @@ class Trainer:
                         for metric in self._task.metrics:
                             if isinstance(metric, BaseMetric):
                                 metric.update(*self._metric_proxy(inputs, targets, outputs))
+                    elif hasattr(self._model, 'metric'):
+                        for metric in self._task.metrics:
+                            if isinstance(metric, BaseMetric):
+                                metric.update(*self._model.metric(inputs, targets, outputs))
                     else:
                         for metric in self._task.metrics:
                             if isinstance(metric, BaseMetric):
@@ -380,7 +384,7 @@ class Trainer:
 
         """
         # Get total number of batch
-        num_batch = len(dataloader)
+        num_batch = len(dataloader) if hasattr(dataloader.dataset, '__len__') else None
         with torch.no_grad():
             self._model.eval()
             predictions = []
@@ -446,7 +450,7 @@ class Trainer:
         """
         if not Path(self._save_dir).exists():
             Path(self._save_dir).mkdir(parents=True)
-            init_logger(self._save_dir.joinpath('train.log'))
+            init_logger(log_file=self._save_dir.joinpath('train.log'))
         checkpoint = self._save_dir.joinpath(file_name)
         if self._data_parallel:
             model = self._model.module

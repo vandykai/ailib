@@ -2,6 +2,7 @@
 import numpy as np
 from ailib.metrics.base_metric import ClassificationMetric
 from sklearn.metrics import roc_curve, auc
+from scipy.special import softmax
 
 class KS(ClassificationMetric):
     """KS metric."""
@@ -32,6 +33,7 @@ class KS(ClassificationMetric):
         """
         y_true = np.array(y_true, dtype=np.int8)
         y_pred = np.array(y_pred, dtype=np.float64)
+        y_pred = softmax(y_pred, axis=-1)
         y_pred = y_pred[:, self.pos_label]
         fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=self.pos_label, drop_intermediate=False)
         return max(tpr-fpr)
