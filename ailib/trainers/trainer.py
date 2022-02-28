@@ -21,6 +21,7 @@ from ailib.tools.utils_time import Timer
 from ailib.tools.utils_init import init_logger
 from ailib.strategy import EarlyStopping
 from ailib.tools.utils_statistic import grad_norm
+from ailib.tools.utils_json import dumps_json_cpmpact
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 import json
@@ -310,7 +311,7 @@ class Trainer:
                             })
                     self._last_result = self.evaluate(self._validloader)
                     if self._verbose:
-                        logger.info(json.dumps({'validation':{k: v for k, v in self._last_result.items()}}, indent=2, ensure_ascii=False))
+                        logger.info(dumps_json_cpmpact({'validation':{k: v for k, v in self._last_result.items()}}, indent=2, ensure_ascii=False, compact_length=120))
                     # Early stopping
                     self._early_stopping.update(self._last_result[self._key]['_score'])
                     # epoch lr scheduler

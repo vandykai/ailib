@@ -148,6 +148,41 @@ def print_decisition_path(text_feature, clf, text_feature_name):
                  threshold_sign,
                  threshold[node_id]))
 
+def plot_dict_bar(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **kwargs):
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    dict_value = sorted(dict_value.items(), key=lambda x:x[0])
+    x = [it[0] for it in dict_value]
+    y = [it[1] for it in dict_value]
+    if is_cumsum:
+        y = np.cumsum(y)/sum(y)
+    num=np.arange(len(y))
+    
+    if reverse:
+        plt.ylim(min(num)-1,max(num)+1)
+        h = plt.barh(x, y, **kwargs)
+    else:
+        plt.xlim(min(num)-1,max(num)+1)
+        h = plt.bar(x, y, **kwargs)
+    return h
+
+def plot_dict_line(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **kwargs):
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    dict_value = sorted(dict_value.items(), key=lambda x:x[0])
+    x = [it[0] for it in dict_value]
+    y = [it[1] for it in dict_value]
+    if is_cumsum:
+        y = np.cumsum(y)/sum(y)
+    num=np.arange(len(y))
+    
+    if reverse:
+        plt.ylim(min(num)-1,max(num)+1)
+        h, = plt.plot(y, x, **kwargs)
+    else:
+        plt.xlim(min(num)-1,max(num)+1)
+        h, = plt.plot(x, y, **kwargs)
+    return h
 
 def model_summary(model, *inputs, batch_size=-1, show_input=True):
     '''

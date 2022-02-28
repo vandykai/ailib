@@ -2,6 +2,20 @@ import json
 import tempfile
 from sklearn.datasets import load_svmlight_file
 from pathlib import Path
+import pandas as pd
+import zipfile
+import os
+import os
+import logging
+import requests
+import math
+import zipfile
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
+from tqdm import tqdm
+from retrying import retry
+
+logger = logging.getLogger('__ailib__')
 
 def read_lines(file_path, *args):
     with open(file_path, *args) as f:
@@ -26,7 +40,7 @@ def save_to_file(json_list, file_name):
                 item = json.dumps(item, ensure_ascii=False)
             f.write(item+'\n')
 
-def load_svmlight(X_iter, y_iter, svm_save_path=None, on_memory=False, **kwargs):
+def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False, **kwargs):
     """
     X_iter : Iterable
         svmlight format
@@ -106,3 +120,95 @@ def load_svmlight(X_iter, y_iter, svm_save_path=None, on_memory=False, **kwargs)
     X, y = load_svmlight_file(fp, **kwargs)
     fp.close()
     return X, y
+
+def load_fold_data(fold, pattern, func, **kwargs):
+    datas = []
+    for file_path in Path(fold).glob(pattern):
+        datas.append(func(file_path, **kwargs))
+    return pd.concat(datas, ignore_index = True)
+
+def unzip_file(zip_src, dst_dir, clean_zip_file=False):
+    """Unzip a file
+
+    Args:
+        zip_src (str): Zip file.
+        dst_dir (str): Destination folder.
+        clean_zip_file (bool): Whether or not to clean the zip file.
+    """
+    fz = zipfile.ZipFile(zip_src, "r")
+    for file in fz.namelist():
+        fz.extract(file, dst_dir)
+    if clean_zip_file:
+        os.remove(zip_src)
+
+@retry(wait_random_min=1000, wait_random_max=5000, stop_max_attempt_number=5)
+def maybe_download(url, filename=None, work_directory=".", expected_bytes=None):
+    """Download a file if it is not already downloaded.
+
+    Args:
+        filename (str): File name.
+        work_directory (str): Working directory.
+        url (str): URL of the file to download.
+        expected_bytes (int): Expected file size in bytes.
+
+    Returns:
+        str: File path of the file downloaded.
+    """
+    if filename is None:
+        filename = url.split("/")[-1]
+    os.makedirs(work_directory, exist_ok=True)
+    filepath = os.path.join(work_directory, filename)
+    if not os.path.exists(filepath):
+        r = requests.get(url, stream=True)
+        if r.status_code == 200:
+            logger.info(f"Downloading {url}")
+            total_size = int(r.headers.get("content-length", 0))
+            block_size = 1024
+            num_iterables = math.ceil(total_size / block_size)
+            with open(filepath, "wb") as file:
+                for data in tqdm(
+                    r.iter_content(block_size),
+                    total=num_iterables,
+                    unit="KB",
+                    unit_scale=True,
+                ):
+                    file.write(data)
+        else:
+            logger.error(f"Problem downloading {url}")
+            r.raise_for_status()
+    else:
+        logger.info(f"File {filepath} already downloaded")
+    if expected_bytes is not None:
+        statinfo = os.stat(filepath)
+        if statinfo.st_size != expected_bytes:
+            os.remove(filepath)
+            raise IOError(f"Failed to verify {filepath}")
+
+    return filepath
+
+@contextmanager
+def temporary_path(path=None):
+    """Return a path to download data. If `path=None`, then it yields a temporal path that is eventually deleted,
+    otherwise the real path of the input.
+
+    Args:
+        path (str): Path to download data.
+
+    Returns:
+        str: Real path where the data is stored.
+
+    Examples:
+        >>> with temporary_path() as path:
+        >>> ... maybe_download(url="http://example.com/file.zip", work_directory=path)
+
+    """
+    if path is None:
+        tmp_dir = TemporaryDirectory()
+        try:
+            yield tmp_dir.name
+        finally:
+            tmp_dir.cleanup()
+    else:
+        path = os.path.realpath(path)
+        yield path
+

@@ -1,5 +1,6 @@
 import base64
 import urllib
+import hashlib
 
 def url_to_base64(url):
     with urllib.request.urlopen(url) as f:
@@ -17,3 +18,9 @@ def to_base64(text):
         return url_to_base64(text)
     else:
         return path_to_base64(text)
+
+def md5(text):
+    return hashlib.md5(str(text).encode('utf-8')).hexdigest()
+
+def sha256(text):
+    return hashlib.sha256(str(text).encode('utf-8')).hexdigest()
