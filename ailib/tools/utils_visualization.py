@@ -51,8 +51,9 @@ def plot_heatmap(cm, classes, data_fmt='d'):
     df_cm = pd.DataFrame(cm, index = classes, columns =classes)
     return sns.heatmap(df_cm, annot=True, fmt=data_fmt)
 
-def plot_roc_curve(fpr: list, tpr: list):
-    ks = max(tpr-fpr)
+def plot_roc_curve(fpr: list, tpr: list, thresholds: list):
+    ks = np.max(tpr-fpr)
+    ks_pos = np.argmax(tpr-fpr)
     roc_auc = auc(fpr, tpr)
     plt.plot(fpr, tpr)
     plt.plot([0, 1], [0, 1], 'k--')
@@ -63,13 +64,14 @@ def plot_roc_curve(fpr: list, tpr: list):
     plt.ylim([0.0, 1.0])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'ROC curve (area = {round(roc_auc, 4)}, ks={round(ks, 4)})')
+    plt.title(f'ROC curve (area = {round(roc_auc, 4)}, ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
     #plt.legend(loc="lower right")
     plt.show()
 
-def plot_ks_curve(fpr: list, tpr: list):
-    ks = max(tpr-fpr)
-    plt.plot(np.linspace(0, 1, num=len(tpr)), tpr-fpr)
+def plot_ks_curve(fpr: list, tpr: list, thresholds: list):
+    ks = np.max(tpr-fpr)
+    ks_pos = np.argmax(tpr-fpr)
+    plt.plot(thresholds, tpr-fpr)
     #plt.plot([0, 1], [ks, ks], 'k--')
     plt.text(0, ks, round(ks, 4), ha='right', va='center', fontsize=10)
     plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
@@ -78,13 +80,13 @@ def plot_ks_curve(fpr: list, tpr: list):
     plt.ylim([0.0, ks])
     plt.xlabel('example')
     plt.ylabel('KS value')
-    plt.title(f'KS curve ks={round(ks, 4)})')
+    plt.title(f'KS curve (ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
     #plt.legend(loc="lower right")
     plt.show()
 
-def plot_fpr_tpr_curve(fpr: list, tpr: list):
-    [fpr_plot] = plt.plot(np.linspace(0, 1, num=len(fpr)), fpr, 'b')
-    [tpr_plot] = plt.plot(np.linspace(0, 1, num=len(tpr)), tpr, 'r')
+def plot_fpr_tpr_curve(fpr: list, tpr: list, thresholds: list):
+    [fpr_plot] = plt.plot(thresholds, fpr, 'b')
+    [tpr_plot] = plt.plot(thresholds, tpr, 'r')
     plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
     plt.gca().yaxis.set_major_locator(MultipleLocator(0.1))
     plt.xlim([0.0, 1.0])
@@ -108,14 +110,15 @@ def plot_precision_recall_curve(precision, recall, average_precision):
 def plot_cls_result(y_true: list, y_pred: list, pos_label=1):
     y_true = np.array(y_true, dtype=np.int8)
     y_pred = np.array(y_pred, dtype=np.float64)
-    y_score = y_pred[:, pos_label]
-    cm = confusion_matrix(y_true, y_score.round())
-    fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label, drop_intermediate=False)
-    plot_roc_curve(fpr, tpr)
-    plot_ks_curve(fpr, tpr)
-    plot_fpr_tpr_curve(fpr, tpr)
-    average_precision = average_precision_score(y_true, y_score)
-    precision, recall, _ = precision_recall_curve(y_true, y_score)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:, pos_label]
+    cm = confusion_matrix(y_true, y_pred.round())
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label, drop_intermediate=False)
+    plot_roc_curve(fpr, tpr, thresholds)
+    plot_ks_curve(fpr, tpr, thresholds)
+    plot_fpr_tpr_curve(fpr, tpr, thresholds)
+    average_precision = average_precision_score(y_true, y_pred)
+    precision, recall, _ = precision_recall_curve(y_true, y_pred)
     plot_precision_recall_curve(precision, recall, average_precision)
     plot_confusion_matrix(cm, classes=[0,1])
 
@@ -183,6 +186,26 @@ def plot_dict_line(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **k
         plt.xlim(min(num)-1,max(num)+1)
         h, = plt.plot(x, y, **kwargs)
     return h
+
+def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10):
+    y_true = np.array(y_true, dtype=np.int8)
+    y_pred = np.array(y_pred, dtype=np.float64)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:, pos_label]
+    score_bin = pd.cut(y_pred, bins)
+    result_df = pd.DataFrame({'score_bin':score_bin, 'y_true':y_true, 'y_pred':y_pred})
+    result_df = result_df.groupby(['score_bin'], as_index=False, sort=False, dropna=True).agg(sample_num=('y_true', 'count'), 
+                                                                      pos_sample_num=('y_true', lambda x:np.sum(x==pos_label)))
+    result_df.sort_values(by=['score_bin'], ascending=False, inplace=True)
+    result_df.reset_index(drop=True, inplace=True)
+    result_df['sample_cumsum'] = result_df['sample_num'].cumsum()
+    result_df['pos_sample_cumsum'] = result_df['pos_sample_num'].cumsum()
+    result_df['pos_sample_rate'] = result_df['pos_sample_num']/result_df['sample_num']
+    result_df['precision'] = result_df['pos_sample_cumsum']/result_df['sample_cumsum']
+    result_df['recall'] = result_df['pos_sample_cumsum']/result_df['pos_sample_num'].sum()
+    result_df['lift'] = (result_df['pos_sample_num']/result_df['sample_num'])/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
+    result_df['lift_cumsum'] = result_df['precision']/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
+    return result_df
 
 def model_summary(model, *inputs, batch_size=-1, show_input=True):
     '''

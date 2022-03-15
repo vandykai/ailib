@@ -29,7 +29,7 @@ from ailib.tasks import (ClassificationMultiLabelTask, ClassificationTask,
                          RankingTask, RegressionTask)
 from ailib.text.basic_data import ch_en_punctuation
 from ailib.tools.utils_encryption import md5, sha256
-from ailib.tools.utils_file import load_fold_data, load_svmlight
+from ailib.tools.utils_file import load_fold_data, load_svmlight, save_svmlight
 from ailib.tools.utils_init import init_logger
 from ailib.tools.utils_ipython import display_html, display_img, display_pd
 from ailib.tools.utils_name_parse import parse_activation
@@ -37,7 +37,7 @@ from ailib.tools.utils_persistence import (load_dill, load_pickle, save_dill,
                                            save_pickle)
 from ailib.tools.utils_random import seed_everything
 from ailib.tools.utils_statistic import regularization
-from ailib.tools.utils_visualization import plot_dict_bar, plot_dict_line
+from ailib.tools.utils_visualization import plot_dict_bar, plot_dict_line, get_score_bin_statistic
 from ailib.trainers import Trainer
 from sklearn.model_selection import train_test_split
 from torch import nn, optim

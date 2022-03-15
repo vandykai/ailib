@@ -121,6 +121,24 @@ def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False,
     fp.close()
     return X, y
 
+
+def save_svmlight(X_iter=None, y_iter=None, svm_save_path=None):
+    """
+    X_iter : Iterable
+        svmlight format
+    y_iter : Iterable
+        target label
+    Returns
+    -------
+        svm_save_path：Path
+    """
+    svm_save_path = Path(svm_save_path)
+    fp = open(svm_save_path, 'wb+')
+    for X_sample, y_sample in zip(X_iter, y_iter):
+        fp.write((str(y_sample) + ' '+ X_sample + '\n').encode('utf-8'))
+    fp.close()
+    return svm_save_path
+
 def load_fold_data(fold, pattern, func, **kwargs):
     datas = []
     for file_path in Path(fold).glob(pattern):
