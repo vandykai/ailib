@@ -78,7 +78,7 @@ def plot_ks_curve(fpr: list, tpr: list, thresholds: list):
     plt.gca().yaxis.set_major_locator(MultipleLocator(0.05))
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, ks])
-    plt.xlabel('example')
+    plt.xlabel('thresholds')
     plt.ylabel('KS value')
     plt.title(f'KS curve (ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
     #plt.legend(loc="lower right")
@@ -91,7 +91,7 @@ def plot_fpr_tpr_curve(fpr: list, tpr: list, thresholds: list):
     plt.gca().yaxis.set_major_locator(MultipleLocator(0.1))
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.0])
-    plt.xlabel('example')
+    plt.xlabel('thresholds')
     plt.ylabel('tpr_fpr value')
     plt.title(f'tpr fpr curve')
     plt.legend(handles=[fpr_plot, tpr_plot], labels=['fpr','tpr'], loc='best')
@@ -151,7 +151,7 @@ def print_decisition_path(text_feature, clf, text_feature_name):
                  threshold_sign,
                  threshold[node_id]))
 
-def plot_dict_bar(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **kwargs):
+def plot_dict_bar(dict_value, is_cumsum=False, figsize=(4,4), reverse=True, **kwargs):
     if figsize:
         fig = plt.figure(figsize=figsize)
     dict_value = sorted(dict_value.items(), key=lambda x:x[0])
@@ -169,7 +169,7 @@ def plot_dict_bar(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **kw
         h = plt.bar(x, y, **kwargs)
     return h
 
-def plot_dict_line(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **kwargs):
+def plot_dict_line(dict_value, is_cumsum=False, figsize=(4,4), reverse=True, **kwargs):
     if figsize:
         fig = plt.figure(figsize=figsize)
     dict_value = sorted(dict_value.items(), key=lambda x:x[0])
@@ -187,7 +187,7 @@ def plot_dict_line(dict_value, is_cumsum=True, figsize=(4,25), reverse=True, **k
         h, = plt.plot(x, y, **kwargs)
     return h
 
-def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10):
+def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, actual_pos_rate=None):
     y_true = np.array(y_true, dtype=np.int8)
     y_pred = np.array(y_pred, dtype=np.float64)
     if len(y_pred.shape) == 2:
@@ -196,13 +196,20 @@ def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10):
     result_df = pd.DataFrame({'score_bin':score_bin, 'y_true':y_true, 'y_pred':y_pred})
     result_df = result_df.groupby(['score_bin'], as_index=False, sort=False, dropna=True).agg(sample_num=('y_true', 'count'), 
                                                                       pos_sample_num=('y_true', lambda x:np.sum(x==pos_label)))
+    
+    if actual_pos_rate is not None:
+        global_pos_rate = result_df['pos_sample_num'].sum()/result_df['sample_num'].sum()
+        neg_global_pos_rate_rate = (1/actual_pos_rate-1)/(1/global_pos_rate-1)
+        result_df['sample_num'] = (result_df['sample_num'] - result_df['pos_sample_num'])*neg_global_pos_rate_rate + result_df['pos_sample_num']
     result_df.sort_values(by=['score_bin'], ascending=False, inplace=True)
     result_df.reset_index(drop=True, inplace=True)
     result_df['sample_cumsum'] = result_df['sample_num'].cumsum()
     result_df['pos_sample_cumsum'] = result_df['pos_sample_num'].cumsum()
     result_df['pos_sample_rate'] = result_df['pos_sample_num']/result_df['sample_num']
     result_df['precision'] = result_df['pos_sample_cumsum']/result_df['sample_cumsum']
-    result_df['recall'] = result_df['pos_sample_cumsum']/result_df['pos_sample_num'].sum()
+    result_df['recall/tpr'] = result_df['pos_sample_cumsum']/result_df['pos_sample_num'].sum()
+    result_df['fpr'] = (result_df['sample_cumsum']-result_df['pos_sample_cumsum'])/(result_df['sample_num'].sum()-result_df['pos_sample_num'].sum())
+    result_df['ks'] = result_df['recall/tpr'] - result_df['fpr']
     result_df['lift'] = (result_df['pos_sample_num']/result_df['sample_num'])/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
     result_df['lift_cumsum'] = result_df['precision']/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
     return result_df

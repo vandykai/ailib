@@ -9,7 +9,7 @@ class DiscountedCumulativeGain(RankingMetric):
 
     ALIAS = ['discounted_cumulative_gain', 'dcg']
 
-    def __init__(self, k: int = 1, threshold: float = 0.):
+    def __init__(self, k: int = -1, threshold: float = 0.):
         """
         :class:`DiscountedCumulativeGain` constructor.
 
@@ -28,12 +28,10 @@ class DiscountedCumulativeGain(RankingMetric):
         self.dcgs = []
 
     def _compute(self, y_true: list, y_pred: list) -> float:
-        if self._k <= 0:
-            return 0.
         coupled_pair = sort_and_couple(y_true, y_pred)
         result = 0.
         for i, (label, score) in enumerate(coupled_pair):
-            if i >= self._k:
+            if self._k >= 0 and i >= self._k:
                 break
             if label > self._threshold:
                 result += (math.pow(2., label) - 1.) / math.log(2. + i)

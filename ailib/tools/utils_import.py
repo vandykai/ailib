@@ -1,6 +1,8 @@
+import math
+import pathlib
 import random
 import typing
-from collections import defaultdict
+from collections import Counter, defaultdict
 from functools import partial
 from pathlib import Path
 from random import choice
@@ -9,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+import seaborn as sns
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -29,20 +32,27 @@ from ailib.tasks import (ClassificationMultiLabelTask, ClassificationTask,
                          RankingTask, RegressionTask)
 from ailib.text.basic_data import ch_en_punctuation
 from ailib.tools.utils_encryption import md5, sha256
+from ailib.tools.utils_feature import IV, get_sparse_feature_IV
 from ailib.tools.utils_file import load_fold_data, load_svmlight, save_svmlight
 from ailib.tools.utils_init import init_logger
 from ailib.tools.utils_ipython import display_html, display_img, display_pd
+from ailib.tools.utils_markdown import (df2markdown, label2markdown,
+                                        list2markdown)
 from ailib.tools.utils_name_parse import parse_activation
 from ailib.tools.utils_persistence import (load_dill, load_pickle, save_dill,
                                            save_pickle)
 from ailib.tools.utils_random import seed_everything
 from ailib.tools.utils_statistic import regularization
-from ailib.tools.utils_visualization import plot_dict_bar, plot_dict_line, get_score_bin_statistic
+from ailib.tools.utils_visualization import (get_score_bin_statistic,
+                                             plot_cls_result, plot_dict_bar,
+                                             plot_dict_line)
 from ailib.trainers import Trainer
+from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split
 from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 from tqdm.auto import tqdm
 from transformers import AdamW, AutoModel, AutoTokenizer
 from treelib import Tree
-from ailib.tools.utils_markdown import df2markdown, list2markdown, label2markdown
+from ailib.tools.utils_check import check_df_label
+from ailib.tools.utils_dict import get_df_dict

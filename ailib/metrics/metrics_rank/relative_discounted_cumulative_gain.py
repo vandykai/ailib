@@ -8,7 +8,7 @@ class RelativeDiscountedCumulativeGain(RankingMetric):
 
     ALIAS = ['relative_discounted_cumulative_gain', 'ndcg']
 
-    def __init__(self, k: int = 1, threshold: float = 0.):
+    def __init__(self, k: int = -1, threshold: float = 0.):
         """
         :class:`RelativeDiscountedCumulativeGain` constructor.
 

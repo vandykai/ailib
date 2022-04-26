@@ -37,6 +37,7 @@ from ailib.tools.utils_file import load_svmlight
 import time
 from ailib.models.base_model_param import BaseModelParam
 import logging
+import pathlib
 
 logger = logging.getLogger('__ailib__')
 
@@ -54,6 +55,7 @@ class ModelParam(BaseModelParam):
         self.add(Param(name='colsample_bytree', value=0.8, desc="colsample bytree"))
         self.add(Param(name='reg_alpha', value=5e-05, desc="reg alpha"))
         self.add(Param(name='objective', value='binary:logistic', desc="objective"))
+        self.add(Param(name='obj', value=None, desc="obj"))
         self.add(Param(name='nthread', value=20, desc="nthread"))
         self.add(Param(name='scale_pos_weight', value=1, desc="scale pos weight"))
         self.add(Param(name='seed', value=123, desc="seed"))
@@ -78,6 +80,7 @@ class Model():
             colsample_bytree=config.colsample_bytree,
             reg_alpha=config.reg_alpha,
             objective=config.objective,
+            obj=config.obj,
             nthread=config.nthread,
             scale_pos_weight=config.scale_pos_weight,
             use_label_encoder=False,
@@ -109,7 +112,12 @@ class Model():
         logger.info(f'fit args:{config_args}')
         self._model.fit(X, y, *args, **config_args)
 
-    def setp_fit(self, X, y, *args, **kwargs):
+    def fit_lazy(self, X, y, block_size=4096, *args, **kwargs):
+        result = []
+        for i in range(0, X.shape[0], block_size):
+            self._model.setp_fit(X[i:i+block_size], y[i:i+block_size], *args, **kwargs)
+
+    def step_fit(self, X, y, *args, **kwargs):
         logger.info(f'start step fitting')
         if not isinstance(X, csr_matrix):
             X, y = load_svmlight(X, y, on_memory=False)
@@ -151,6 +159,25 @@ class Model():
     def predict_proba(self, X):
         return self._model.predict_proba(X)
 
+    def predict_proba_lazy(self, X, block_size=4096):
+        result = []
+        for i in range(0, X.shape[0], block_size):
+            result.append(self._model.predict_proba(X[i:i+block_size]))
+        return np.concatenate(result, axis=0)
+
+    def get_feature_importantce_by_tree_df(self, fmap=None, sep='\t', detail=False):
+        if type(fmap) in [str, pathlib.PosixPath]:
+            fmap = pd.read_csv(fmap, sep=sep, names=['name', 'id'])
+            fmap['id'] = fmap['id'].map(lambda x:f'f{x}')
+            fmap = fmap.set_index('id').to_dict()['name']
+        tree_df = self._model.get_booster().trees_to_dataframe().sort_values('Gain', ascending=False)
+
+        if fmap:
+            tree_df['Feature'] = tree_df['Feature'].map(lambda x:fmap.get(x, x))
+        if not detail:
+            tree_df = tree_df.groupby('Feature').agg(Gain=('Gain','mean'), Cover=('Cover','mean')).sort_values(by=['Gain', 'Cover'], ascending=False).reset_index()
+        return tree_df
+    
     def result_graph(self, X, y):
         y_pred = self.predict_proba(X)
         plot_cls_result(y, y_pred)

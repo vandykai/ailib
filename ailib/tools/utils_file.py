@@ -1,7 +1,7 @@
 import json
 import tempfile
 from sklearn.datasets import load_svmlight_file
-from pathlib import Path
+from pathlib import Path, PosixPath
 import pandas as pd
 import zipfile
 import os
@@ -14,6 +14,7 @@ from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from tqdm import tqdm
 from retrying import retry
+import math
 
 logger = logging.getLogger('__ailib__')
 
@@ -114,12 +115,19 @@ def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False,
             X, y = load_svmlight_file(str(svm_save_path), **kwargs)
             return X, y
         fp = open(svm_save_path, 'wb+')
-    for X_sample, y_sample in zip(X_iter, y_iter):
-        fp.write((str(y_sample) + ' '+ X_sample + '\n').encode('utf-8'))
+    if y_iter is None:
+        for X_sample in X_iter:
+            fp.write(('0 '+ X_sample + '\n').encode('utf-8'))
+    else:
+        for X_sample, y_sample in zip(X_iter, y_iter):
+            fp.write((str(y_sample) + ' '+ X_sample + '\n').encode('utf-8'))
     fp.seek(0)
     X, y = load_svmlight_file(fp, **kwargs)
     fp.close()
-    return X, y
+    if y_iter is None:
+        return X
+    else:
+        return X, y
 
 
 def save_svmlight(X_iter=None, y_iter=None, svm_save_path=None):
@@ -139,11 +147,58 @@ def save_svmlight(X_iter=None, y_iter=None, svm_save_path=None):
     fp.close()
     return svm_save_path
 
-def load_fold_data(fold, pattern, func, **kwargs):
+def df_dict_to_excel(df_dict, file_name):
+    writer = pd.ExcelWriter(file_name)
+    for key, value in df_dict.items():
+        value.to_excel(writer, key, index=False)
+    writer.save()
+
+def load_fold_data(fold, pattern, func=pd.read_csv, recursive=False, **kwargs):
     datas = []
-    for file_path in Path(fold).glob(pattern):
-        datas.append(func(file_path, **kwargs))
+    if recursive:
+        for file_path in Path(fold).rglob(pattern):
+            datas.append(func(file_path, **kwargs))
+    else:
+        for file_path in Path(fold).glob(pattern):
+            datas.append(func(file_path, **kwargs))
     return pd.concat(datas, ignore_index = True)
+
+def load_fold_data_iter(fold, pattern, func=pd.read_csv, recursive=False, split=None, **kwargs):
+    file_paths = []
+    if recursive:
+        for file_path in Path(fold).rglob(pattern):
+            file_paths.append(file_path)
+    else:
+        for file_path in Path(fold).glob(pattern):
+            file_paths.append(file_path)
+
+    step = math.ceil(len(file_paths)/split)
+    for i in range(0, len(file_paths), step):
+        datas = [func(file_path, **kwargs) for file_path in file_paths[i:i+step]]
+        yield pd.concat(datas, ignore_index = True)
+
+def split_file(file_path, partlines=0, header=True, names=None):
+    if not isinstance(file_path, PosixPath):
+        file_path = Path(file_path)
+    if names is None and header:
+        current_part = 0
+    with open(file_path, 'r') as fin:
+        current_partlines = 0
+        for idx, line in enumerate(fin):
+            if idx == 0 and header:
+                if names is None:
+                    names = line
+                elif not names.endswith('\n'):
+                    names += '\n'
+                continue
+            if current_partlines % partlines == 0:
+                fout = open(file_path.parent/(file_path.stem+f'_{current_part}'+ file_path.suffix), 'w')
+                fout.write(names)
+                current_part += 1
+                current_partlines == 0
+            fout.write(line)
+            current_partlines += 1
+        fout.close()
 
 def unzip_file(zip_src, dst_dir, clean_zip_file=False):
     """Unzip a file

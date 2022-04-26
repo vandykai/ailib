@@ -16,7 +16,7 @@ seed_everything(123)
 
 train_config = {
     'batch_size': 8,
-    'device': 'cuda:2',
+    'device': 'cpu',
     'pretrained_model_path':'/home/wandikai/pretrain_model/HuggingFace/chinese-roberta-wwm-ext/hfl'
 }
 
