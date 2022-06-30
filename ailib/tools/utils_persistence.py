@@ -5,6 +5,8 @@ import pickle
 import dill
 import torch.nn as nn
 from pathlib import Path
+from io import BytesIO
+import oss2
 import logging
 
 def save_pickle(data, file_path, **kwargs):
@@ -152,6 +154,36 @@ def load_model(model, model_path, state_key="state_dict"):
         model_path = str(model_path)
     logging.info(f"loading model from {str(model_path)} .")
     states = torch.load(model_path)
+    if state_key:
+        state_dict = states[state_key]
+        del states[state_key]
+    if isinstance(model, nn.DataParallel):
+        model.module.load_state_dict(state_dict)
+    else:
+        model.load_state_dict(state_dict)
+    return model, states
+
+def save_model2oss(model, bucket_name, model_path, accessKeyID, accessKeySecret, endpoint, **kwargs):
+    auth = oss2.Auth(accessKeyID, accessKeySecret)
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    buffer = BytesIO()
+    if isinstance(model, nn.DataParallel):
+        model = model.module
+    state_dict = model.state_dict()
+    for key in state_dict:
+        state_dict[key] = state_dict[key].cpu()
+    if kwargs:
+        assert "state_dict" not in kwargs
+    kwargs["state_dict"] = state_dict
+    torch.save(kwargs, buffer)
+    bucket.put_object(model_path, buffer.getvalue())
+
+def load_model2oss(model, bucket_name, model_path, accessKeyID, accessKeySecret, endpoint, state_key="state_dict"):
+    auth = oss2.Auth(accessKeyID, accessKeySecret)
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    logging.info(f"loading model from oss://{str(bucket_name)}/{str(model_path)}.")
+    buffer = BytesIO(bucket.get_object(model_path).read())
+    states = torch.load(buffer)
     if state_key:
         state_dict = states[state_key]
         del states[state_key]

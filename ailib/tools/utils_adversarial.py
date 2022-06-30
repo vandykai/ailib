@@ -1,4 +1,7 @@
 import torch
+import numpy as np
+import scipy.sparse as sp 
+
 
 class FGM():
     def __init__(self, model: torch.nn.Module, epsilon: int = 1., emb_name: str = 'embeddings'):
@@ -119,3 +122,34 @@ class PGD():
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 param.grad = self.grad_backup[name]
+
+class RandomPerturbation():
+    def __init__(self, mu: int = 0., delta: int = 1.):
+        self.mu = mu
+        self.delta = delta
+
+    def attack(self, X, y=None, attack_idx=None):
+        if attack_idx is None:
+            attack_X = X[attack_idx].copy()
+            if y is not None:
+                attack_y = y[attack_idx].copy()
+        else:
+            attack_X = X.copy()
+            if y is not None:
+                attack_y = y.copy()
+            attack_X.data = np.array([self.data_convert(x) for x in attack_X.data])
+        if y is not None:
+            return sp.vstack((X, attack_X)), np.hstack((y, attack_y))
+        else:
+            return sp.vstack((X, attack_X))
+
+    def data_convert(self, x:sp.csr_matrix):
+        if int(x)!=x: # 非整数
+            x_perturbation = x + np.random.normal(loc=self.mu, scale=self.delta, size=None)
+            if x < 1 and x_perturbation >= 1:
+                return x
+            return x_perturbation
+        elif x > 0:
+            x_perturbation = np.random.poisson(x)
+            return x_perturbation
+        return x

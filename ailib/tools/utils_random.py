@@ -8,6 +8,7 @@ import os
 from contextlib import contextmanager
 from copy import deepcopy
 from sklearn.model_selection import train_test_split
+import pandas as pd
 
 def seed_everything(seed=1029):
     '''
@@ -129,3 +130,33 @@ def rationed_split_df(df_examples, train_ratio, test_ratio, val_ratio, rnd=None)
     data = tuple(df_examples.iloc[index].reset_index(drop=True) for index in indices)
 
     return data
+
+def df_cut(x, bins, labels=None, **kwargs):
+    kwargs['x'] = x
+    kwargs['bins'] = bins
+    kwargs['labels'] = labels
+    if isinstance(bins, pd.IntervalIndex):
+        labels_map = dict(zip(bins, labels))
+        return pd.cut(**kwargs).map(labels_map)
+    return pd.cut(**kwargs)
+
+def df_cut_sample(df, column, bins, **kwargs):
+    """
+    sample according to df[column]
+    bins: {(0.97, 1):0.1, (0.95, 0.97):10000, (0.93, 0.95):10000, (0.9, 0.93):10000, (0.8, 0.9):10000}
+    """
+    interval_bins = pd.IntervalIndex.from_tuples(list(bins.keys()))
+    sample_nums = bins.values()
+    if '__cut' in df.columns:
+        raise ValueError("__cut name alreadt in df's columns")
+    df['__cut'] = cut(df[column], interval_bins, labels=range(len(bins)))
+    result = []
+    for cut_idx, sample_num in zip(range(len(bins)), sample_nums):
+        if int(sample_num)==sample_num:
+            result.append(df[df['__cut']==cut_idx].sample(n=sample_num))
+        else:
+            result.append(df[df['__cut']==cut_idx].sample(frac=sample_num))
+    del df['__cut']
+    result_df = pd.concat(result, ignore_index=True)
+    del result_df['__cut']
+    return result_df

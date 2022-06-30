@@ -41,6 +41,13 @@ def save_to_file(json_list, file_name):
                 item = json.dumps(item, ensure_ascii=False)
             f.write(item+'\n')
 
+def get_svmlight_dim(X_iter):
+    h, w = 0, 0
+    for X_sample in X_iter:
+        h += 1
+        w = max(w, int(X_sample.split(' ')[-1].split(':')[0]))
+    return (h, w)
+
 def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False, **kwargs):
     """
     X_iter : Iterable
@@ -117,10 +124,16 @@ def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False,
         fp = open(svm_save_path, 'wb+')
     if y_iter is None:
         for X_sample in X_iter:
-            fp.write(('0 '+ X_sample + '\n').encode('utf-8'))
+            if type(X_sample) == str:
+                fp.write(('0 '+ X_sample + '\n').encode('utf-8'))
+            else:
+                fp.write(('0 '+ ' '.join(X_sample) + '\n').encode('utf-8'))
     else:
         for X_sample, y_sample in zip(X_iter, y_iter):
-            fp.write((str(y_sample) + ' '+ X_sample + '\n').encode('utf-8'))
+            if type(X_sample) == str:
+                fp.write((str(y_sample) + ' '+ X_sample + '\n').encode('utf-8'))
+            else:
+                fp.write((str(y_sample) + ' '+ ' '.join(X_sample) + '\n').encode('utf-8'))
     fp.seek(0)
     X, y = load_svmlight_file(fp, **kwargs)
     fp.close()
@@ -180,16 +193,15 @@ def load_fold_data_iter(fold, pattern, func=pd.read_csv, recursive=False, split=
 def split_file(file_path, partlines=0, header=True, names=None):
     if not isinstance(file_path, PosixPath):
         file_path = Path(file_path)
-    if names is None and header:
-        current_part = 0
+    if names and not names.endwiths('\n'):
+        names += '\n'
+    current_part = 0
     with open(file_path, 'r') as fin:
         current_partlines = 0
         for idx, line in enumerate(fin):
             if idx == 0 and header:
                 if names is None:
                     names = line
-                elif not names.endswith('\n'):
-                    names += '\n'
                 continue
             if current_partlines % partlines == 0:
                 fout = open(file_path.parent/(file_path.stem+f'_{current_part}'+ file_path.suffix), 'w')
@@ -199,6 +211,34 @@ def split_file(file_path, partlines=0, header=True, names=None):
             fout.write(line)
             current_partlines += 1
         fout.close()
+
+def split_fold_file(fold, pattern=None, partlines=0, header=True, names=None, out_file_name=None):
+    if names and not names.endwiths('\n'):
+        names += '\n'
+    current_part = 0
+    current_partlines = 0
+    fout = None
+    for file_path in Path(fold).glob(pattern):
+        with open(file_path, 'r') as fin:
+            for idx, line in enumerate(fin):
+                if idx == 0 and header:
+                    if names is None:
+                        names = line
+                    continue
+                if current_partlines % partlines == 0:
+                    if fout is not None:
+                        fout.close()
+                    if out_file_name:
+                        fout = open(out_file_name.format(current_part=current_part), 'w')
+                    else:
+                        fout = open(file_path.parent/(file_path.stem+f'_{current_part}'+ file_path.suffix), 'w')
+                    fout.write(names)
+                    current_part += 1
+                fout.write(line)
+                current_partlines += 1
+    if fout is not None:
+        fout.close()
+    print(f"total {current_partlines} lines, {current_part} files")
 
 def unzip_file(zip_src, dst_dir, clean_zip_file=False):
     """Unzip a file

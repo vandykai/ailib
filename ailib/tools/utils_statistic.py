@@ -148,3 +148,47 @@ class BeyesianSmooth(object):
         impressions = np.array(impressions)
         click_rates = clicks/impressions
         return click_rates.mean(), click_rates.var()
+
+def distribution_ks(x1, x2):
+    x1 = sorted(x1)
+    x2 = sorted(x2)
+    y1_fraction = []
+    y2_fraction = []
+    x1_idx, x2_idx = 0, 0
+    x = []
+    while x1_idx < len(x1) and x2_idx < len(x2):
+        if x1[x1_idx] < x2[x2_idx]:
+            x.append(x1[x1_idx])
+            x1_idx += 1
+        elif x1[x1_idx] > x2[x2_idx]:
+            x.append(x2[x2_idx])
+            x2_idx += 1
+        else:
+            x.append(x1[x1_idx])
+            x1_idx += 1 
+            x2_idx += 1
+        y1_fraction.append(x1_idx/len(x1))
+        y2_fraction.append(x2_idx/len(x2))
+    while x1_idx < len(x1):
+        x.append(x1[x1_idx])
+        x1_idx += 1
+        y1_fraction.append(x1_idx/len(x1))
+        y2_fraction.append(x2_idx/len(x2))
+    while x2_idx < len(x2):
+        x.append(x2[x2_idx])
+        x2_idx += 1
+        y1_fraction.append(x1_idx/len(x1))
+        y2_fraction.append(x2_idx/len(x2))
+    return np.array(y1_fraction), np.array(y2_fraction), np.array(x)
+
+def get_sample_rate_for_equal_dist(mark_dist, sample_dist, max_sample_rate=None):
+    sample_rate = {}
+    total_rate = sum(sample_dist.values())/sum(mark_dist.values())
+    for key in sample_dist:
+        sample_rate[key] = mark_dist[key]*total_rate/sample_dist[key] if key in mark_dist and sample_dist[key]!= 0 else 0
+    if not max_sample_rate:
+        max_sample_rate = max(sample_rate.values())
+    for key in sample_rate:
+        sample_rate[key] = sample_rate[key]/ max_sample_rate
+    print(f"样本预估数:{sum(sample_dist.values())/max_sample_rate}")
+    return sample_rate

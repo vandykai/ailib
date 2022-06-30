@@ -151,32 +151,40 @@ def print_decisition_path(text_feature, clf, text_feature_name):
                  threshold_sign,
                  threshold[node_id]))
 
-def plot_dict_bar(dict_value, is_cumsum=False, figsize=(4,4), reverse=True, **kwargs):
+def plot_dict_bar(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
     if figsize:
         fig = plt.figure(figsize=figsize)
     dict_value = sorted(dict_value.items(), key=lambda x:x[0])
     x = [it[0] for it in dict_value]
     y = [it[1] for it in dict_value]
-    if is_cumsum:
+    plt.title(f"total num:{sum(y)}")
+    assert y_type in ['cumsum', 'count', 'percent']
+    if y_type == 'cumsum':
         y = np.cumsum(y)/sum(y)
+    elif y_type == 'percent':
+        y = np.array(y)/sum(y)
+
     num=np.arange(len(y))
-    
     if reverse:
         plt.ylim(min(num)-1,max(num)+1)
         h = plt.barh(x, y, **kwargs)
+        plt.bar_label(h)
     else:
         plt.xlim(min(num)-1,max(num)+1)
         h = plt.bar(x, y, **kwargs)
+        plt.bar_label(h)
     return h
 
-def plot_dict_line(dict_value, is_cumsum=False, figsize=(4,4), reverse=True, **kwargs):
+def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
     if figsize:
         fig = plt.figure(figsize=figsize)
     dict_value = sorted(dict_value.items(), key=lambda x:x[0])
     x = [it[0] for it in dict_value]
     y = [it[1] for it in dict_value]
-    if is_cumsum:
+    if y_type == 'cumsum':
         y = np.cumsum(y)/sum(y)
+    elif y_type == 'percent':
+        y = np.array(y)/sum(y)
     num=np.arange(len(y))
     
     if reverse:

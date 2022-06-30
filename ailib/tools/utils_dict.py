@@ -42,6 +42,7 @@ def get_df_dict(data_df, key_columns, value_columns, different='drop'):
     assert different in ('last', 'first', 'all', 'drop')
     def _get_df_dict(grp):
         grp_labels = grp[value_columns].to_numpy().tolist()
+        grp_labels = sorted(grp_labels)
         if (type(value_columns) in [list, np.ndarray]):
             grp_labels = [tuple(it) for it in grp_labels]
         if different=='all':
