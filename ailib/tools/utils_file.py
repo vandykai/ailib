@@ -166,23 +166,31 @@ def df_dict_to_excel(df_dict, file_name):
         value.to_excel(writer, key, index=False)
     writer.save()
 
-def load_fold_data(fold, pattern, func=pd.read_csv, recursive=False, **kwargs):
+def load_fold_data(fold, pattern='*', func=pd.read_csv, recursive=False, debug=False, **kwargs):
     datas = []
     if recursive:
         for file_path in Path(fold).rglob(pattern):
+            if debug:
+                print(file_path)
             datas.append(func(file_path, **kwargs))
     else:
         for file_path in Path(fold).glob(pattern):
+            if debug:
+                print(file_path)
             datas.append(func(file_path, **kwargs))
     return pd.concat(datas, ignore_index = True)
 
-def load_fold_data_iter(fold, pattern, func=pd.read_csv, recursive=False, split=None, **kwargs):
+def load_fold_data_iter(fold, pattern='*', func=pd.read_csv, recursive=False, split=None, debug=False, **kwargs):
     file_paths = []
     if recursive:
         for file_path in Path(fold).rglob(pattern):
+            if debug:
+                print(file_path)
             file_paths.append(file_path)
     else:
         for file_path in Path(fold).glob(pattern):
+            if debug:
+                print(file_path)
             file_paths.append(file_path)
 
     step = math.ceil(len(file_paths)/split)
