@@ -1,4 +1,5 @@
 import math
+import os
 import pathlib
 import random
 import sys
@@ -18,7 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import xgboost as xgb
-from ailib.local.ali.dataset_file import FileDataset
+from ailib.local.ali.dataset_file import FileDataset, FileReader
 from ailib.local.ali.date import Date
 from ailib.loss_function import SoftmaxMultiLabelLoss
 from ailib.models.base_model import BaseModel
@@ -34,7 +35,7 @@ from ailib.tasks import (ClassificationMultiLabelTask, ClassificationTask,
                          RankingTask, RegressionTask)
 from ailib.text.basic_data import ch_en_punctuation
 from ailib.tools.utils_adversarial import RandomPerturbation
-from ailib.tools.utils_check import check_df_label
+from ailib.tools.utils_check import check_df_label, clean_df_label
 from ailib.tools.utils_dict import get_df_dict
 from ailib.tools.utils_encryption import md5, sha256
 from ailib.tools.utils_feature import IV, get_sparse_feature_IV
@@ -54,8 +55,9 @@ from ailib.tools.utils_random import df_cut, df_cut_sample, seed_everything
 from ailib.tools.utils_statistic import (get_sample_rate_for_equal_dist,
                                          regularization)
 from ailib.tools.utils_visualization import (get_score_bin_statistic,
-                                             plot_cls_result, plot_dict_bar,
-                                             plot_dict_line)
+                                             plot_cls_auc, plot_cls_result,
+                                             plot_dict_bar, plot_dict_line,
+                                             plot_time_distribute)
 from ailib.trainers import Trainer
 from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split

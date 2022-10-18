@@ -36,6 +36,7 @@ from sklearn.metrics import (auc, average_precision_score,
 from sklearn.model_selection import GridSearchCV, train_test_split
 from tqdm.auto import tqdm
 from xgboost import plot_importance, plot_tree, to_graphviz
+from typing import List, Callable
 
 logger = logging.getLogger('__ailib__')
 
@@ -64,26 +65,35 @@ class ModelParam(BaseModelParam):
         self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) to split train_set"))
         self.add(Param(name='verbose', value=True, desc="verbose"))
 
+class XGBIterator(xgb.DataIter):
+    def __init__(self, svm_file_paths: List[str]):
+        self._file_paths = svm_file_paths
+        self._it = 0
+        super().__init__(cache_prefix=os.path.join(".", "cache"))
+
+  
+    def next(self, input_data: Callable):
+        if self._it == len(self._file_paths):
+            # return 0 to let XGBoost know this is the end of iteration
+            return 0
+        X, y = load_svmlight_file(self._file_paths[self._it])
+        input_data(
+            data=X,
+            label=y,
+            weight=None,
+        )
+        self._it += 1
+        # Return 1 to let XGBoost know we haven't seen all the files yet.
+        return 1
+
+    def reset(self):
+        """Reset the iterator to its beginning"""
+        self._it = 0
+
 class Model():
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self._model = xgb.XGBClassifier(
-            learning_rate=config.learning_rate,
-            n_estimators=config.n_estimators,
-            max_depth=config.max_depth,
-            min_child_weight=config.min_child_weight,
-            gamma=config.gamma,
-            subsample=config.subsample,
-            colsample_bytree=config.colsample_bytree,
-            reg_alpha=config.reg_alpha,
-            objective=config.objective,
-            obj=config.obj,
-            nthread=config.nthread,
-            scale_pos_weight=config.scale_pos_weight,
-            use_label_encoder=False,
-            seed=config.seed
-        )
         self._save_dir = Path("./outputs")/config.model_name/time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime(time.time()))
 
 

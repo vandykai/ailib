@@ -48,7 +48,7 @@ def get_svmlight_dim(X_iter):
         w = max(w, int(X_sample.split(' ')[-1].split(':')[0]))
     return (h, w)
 
-def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False, **kwargs):
+def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False, zero_based=True, **kwargs):
     """
     X_iter : Iterable
         svmlight format
@@ -201,7 +201,7 @@ def load_fold_data_iter(fold, pattern='*', func=pd.read_csv, recursive=False, sp
 def split_file(file_path, partlines=0, header=True, names=None):
     if not isinstance(file_path, PosixPath):
         file_path = Path(file_path)
-    if names and not names.endwiths('\n'):
+    if names and not names.endswith('\n'):
         names += '\n'
     current_part = 0
     with open(file_path, 'r') as fin:
@@ -221,7 +221,7 @@ def split_file(file_path, partlines=0, header=True, names=None):
         fout.close()
 
 def split_fold_file(fold, pattern=None, partlines=0, header=True, names=None, out_file_name=None):
-    if names and not names.endwiths('\n'):
+    if names and not names.endswith('\n'):
         names += '\n'
     current_part = 0
     current_partlines = 0

@@ -45,7 +45,6 @@ def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix')
     # show confusion matrix
     if save_path:
         plt.savefig(save_path, format='png')
-    plt.show()
 
 def plot_heatmap(cm, classes, data_fmt='d'):
     df_cm = pd.DataFrame(cm, index = classes, columns =classes)
@@ -66,7 +65,6 @@ def plot_roc_curve(fpr: list, tpr: list, thresholds: list):
     plt.ylabel('True Positive Rate')
     plt.title(f'ROC curve (area = {round(roc_auc, 4)}, ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
     #plt.legend(loc="lower right")
-    plt.show()
 
 def plot_ks_curve(fpr: list, tpr: list, thresholds: list):
     ks = np.max(tpr-fpr)
@@ -82,7 +80,6 @@ def plot_ks_curve(fpr: list, tpr: list, thresholds: list):
     plt.ylabel('KS value')
     plt.title(f'KS curve (ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
     #plt.legend(loc="lower right")
-    plt.show()
 
 def plot_fpr_tpr_curve(fpr: list, tpr: list, thresholds: list):
     [fpr_plot] = plt.plot(thresholds, fpr, 'b')
@@ -95,7 +92,6 @@ def plot_fpr_tpr_curve(fpr: list, tpr: list, thresholds: list):
     plt.ylabel('tpr_fpr value')
     plt.title(f'tpr fpr curve')
     plt.legend(handles=[fpr_plot, tpr_plot], labels=['fpr','tpr'], loc='best')
-    plt.show()
 
 def plot_precision_recall_curve(precision, recall, average_precision):
     plt.step(recall, precision, color='b', alpha=0.2, where='post')
@@ -105,7 +101,6 @@ def plot_precision_recall_curve(precision, recall, average_precision):
     plt.ylim([0.0, 1.05])
     plt.xlim([0.0, 1.0])
     plt.title('Precision-Recall: {0:0.6f}'.format(average_precision))
-    plt.show()
 
 def plot_cls_result(y_true: list, y_pred: list, pos_label=1):
     y_true = np.array(y_true, dtype=np.int8)
@@ -113,16 +108,28 @@ def plot_cls_result(y_true: list, y_pred: list, pos_label=1):
     if len(y_pred.shape) == 2:
         y_pred = y_pred[:, pos_label]
     cm = confusion_matrix(y_true, y_pred.round())
-    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label, drop_intermediate=False)
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=pos_label, drop_intermediate=False)
     plot_roc_curve(fpr, tpr, thresholds)
+    plt.show()
     plot_ks_curve(fpr, tpr, thresholds)
+    plt.show()
     plot_fpr_tpr_curve(fpr, tpr, thresholds)
+    plt.show()
     average_precision = average_precision_score(y_true, y_pred)
     precision, recall, _ = precision_recall_curve(y_true, y_pred)
     plot_precision_recall_curve(precision, recall, average_precision)
+    plt.show()
     plot_confusion_matrix(cm, classes=[0,1])
+    plt.show()
 
-
+def plot_cls_auc(y_true: list, y_pred: list, pos_label=1):
+    y_true = np.array(y_true, dtype=np.int8)
+    y_pred = np.array(y_pred, dtype=np.float64)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:, pos_label]
+    cm = confusion_matrix(y_true, y_pred.round())
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=pos_label, drop_intermediate=False)
+    plot_roc_curve(fpr, tpr, thresholds)
 
 def print_decisition_path(text_feature, clf, text_feature_name):
     node_indicator = clf.decision_path(text_feature)
@@ -151,11 +158,14 @@ def print_decisition_path(text_feature, clf, text_feature_name):
                  threshold_sign,
                  threshold[node_id]))
 
-def plot_dict_bar(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
-    if figsize:
+def plot_dict_bar(dict_value, y_type='percent', figsize='auto', reverse=True, **kwargs):
+    if figsize=='auto':
+        figsize = (4, int(len(dict_value)/5))
         fig = plt.figure(figsize=figsize)
-    dict_value = sorted(dict_value.items(), key=lambda x:x[0])
-    x = [it[0] for it in dict_value]
+    elif figsize:
+        fig = plt.figure(figsize=figsize)
+    dict_value = sorted(dict_value.items(), key=lambda x:float(str(x[0]).split('-')[0]))
+    x = [str(it[0]) for it in dict_value]
     y = [it[1] for it in dict_value]
     plt.title(f"total num:{sum(y)}")
     assert y_type in ['cumsum', 'count', 'percent']
@@ -178,8 +188,8 @@ def plot_dict_bar(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kw
 def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
     if figsize:
         fig = plt.figure(figsize=figsize)
-    dict_value = sorted(dict_value.items(), key=lambda x:x[0])
-    x = [it[0] for it in dict_value]
+    dict_value = sorted(dict_value.items(), key=lambda x:float(str(x[0]).split('-')[0]))
+    x = [str(it[0]) for it in dict_value]
     y = [it[1] for it in dict_value]
     if y_type == 'cumsum':
         y = np.cumsum(y)/sum(y)
@@ -221,6 +231,30 @@ def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, ac
     result_df['lift'] = (result_df['pos_sample_num']/result_df['sample_num'])/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
     result_df['lift_cumsum'] = result_df['precision']/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
     return result_df
+
+def plot_time_distribute(df, date_key, label_key, figsize='auto'):
+    '''
+    打印：全量/正样本随时间的分布，
+    :param df:
+    :param date_key:
+    :param label_key:
+    :param figsize:
+    :return:
+    Example:
+        >>> plot_time_distribute(df, 'loan_date', 'label')
+    '''
+    dict_value = df[date_key].value_counts().to_dict()
+    if figsize=='auto':
+        figsize = (15, int(len(dict_value)/5))
+        fig = plt.figure(figsize=figsize)
+    elif figsize:
+        fig = plt.figure(figsize=figsize)
+    plt.subplot(1, 2, 1)
+    plot_dict_bar(dict_value, figsize=None, y_type='cumsum')
+    plt.subplot(1, 2, 2)
+    pos_df = df[df[label_key]==1]
+    plot_dict_bar(pos_df[date_key].value_counts().to_dict(), figsize=None, y_type='cumsum')
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.5, hspace=None)
 
 def model_summary(model, *inputs, batch_size=-1, show_input=True):
     '''

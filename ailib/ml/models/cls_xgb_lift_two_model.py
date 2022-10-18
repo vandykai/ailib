@@ -1,3 +1,5 @@
+from ailib.ml.models.cls_xgb import Model as XGBModel
+import logging
 import logging
 import os
 import pathlib
@@ -16,8 +18,6 @@ import pandas as pd
 import scipy.sparse as sp
 import seaborn as sns
 import xgboost as xgb
-from ailib.models.base_model import BaseModel
-from ailib.models.base_model_param import BaseModelParam
 from ailib.param import hyper_spaces
 from ailib.param.param import Param
 from ailib.tools.utils_file import load_svmlight
@@ -36,39 +36,16 @@ from sklearn.metrics import (auc, average_precision_score,
 from sklearn.model_selection import GridSearchCV, train_test_split
 from tqdm.auto import tqdm
 from xgboost import plot_importance, plot_tree, to_graphviz
-
 logger = logging.getLogger('__ailib__')
+from ailib.tools.utils_file import load_svmlight, get_svmlight_dim
+from ailib.tools.utils_random import seed_everything
+from scipy.sparse.csr import csr_matrix
 
-class ModelParam(BaseModelParam):
-
-    def __init__(self, with_embedding=False, with_multi_layer_perceptron=False):
-        super().__init__(with_embedding, with_multi_layer_perceptron)
-        self['model_name'] = "XGBoost"
-        self['learning_rate'] = 5e-2
-        self.add(Param(name='n_estimators', value=300, desc="n_estimators"))
-        self.add(Param(name='max_depth', value=3, desc="max depth dim"))
-        self.add(Param(name='min_child_weight', value=4, desc="min child weight"))
-        self.add(Param(name='gamma', value=0.6, desc="gamma"))
-        self.add(Param(name='subsample', value=0.8, desc="subsample"))
-        self.add(Param(name='colsample_bytree', value=0.8, desc="colsample bytree"))
-        self.add(Param(name='reg_alpha', value=5e-05, desc="reg alpha"))
-        self.add(Param(name='objective', value='binary:logistic', desc="objective"))
-        self.add(Param(name='obj', value=None, desc="obj"))
-        self.add(Param(name='nthread', value=20, desc="nthread"))
-        self.add(Param(name='scale_pos_weight', value=1, desc="scale pos weight"))
-        self.add(Param(name='seed', value=123, desc="seed"))
-
-        self.add(Param(name='sample_weight', value=None, desc="sample weight"))
-        self.add(Param(name='early_stopping_rounds', value=None, desc="sample weight"))
-        self.add(Param(name='eval_metric', value=['error','logloss', 'auc'], desc="eval metric"))
-        self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) to split train_set"))
-        self.add(Param(name='verbose', value=True, desc="verbose"))
-
-class Model():
+class Model(XGBModel):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self._model = xgb.XGBClassifier(
+        self._model =  xgb.XGBClassifier(
             learning_rate=config.learning_rate,
             n_estimators=config.n_estimators,
             max_depth=config.max_depth,
@@ -113,7 +90,7 @@ class Model():
     def fit_lazy(self, X, y, block_size=4096, *args, **kwargs):
         result = []
         for i in range(0, X.shape[0], block_size):
-            self.step_fit(X[i:i+block_size], y[i:i+block_size], *args, **kwargs)
+            self._model.setp_fit(X[i:i+block_size], y[i:i+block_size], *args, **kwargs)
 
     def step_fit(self, X, y, *args, **kwargs):
         logger.info(f'start step fitting')
@@ -179,8 +156,6 @@ class Model():
     def result_graph(self, X, y):
         y_pred = self.predict_proba(X)
         plot_cls_result(y, y_pred)
-        plt.title('score distribute')
-        _ = plt.hist(y_pred[:, 1], bins=100)
 
 
 
