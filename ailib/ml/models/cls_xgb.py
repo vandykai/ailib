@@ -137,7 +137,7 @@ class Model():
         else:
             self._model.fit(X, y, *args, **config_args, xgb_model=self._model.get_booster())
     
-    def save(self, file_name=None):
+    def save_model(self, file_name=None):
         self._save_dir.mkdir(parents=True)
         if file_name is not None:
             checkpoint = self._save_dir.joinpath(file_name)
@@ -146,7 +146,7 @@ class Model():
         self._model.save_model(checkpoint)
         logger.info(f'model saved at :{checkpoint}')
 
-    def load(self, file_path=None):
+    def load_model(self, file_path=None):
         if file_path is None:
             file_path = self._save_dir.joinpath("model.pt")
         self._model.load_model(file_path)
@@ -168,6 +168,9 @@ class Model():
             fmap = pd.read_csv(fmap, sep=sep, names=['name', 'id'])
             fmap['id'] = fmap['id'].map(lambda x:f'f{x}')
             fmap = fmap.set_index('id').to_dict()['name']
+        elif type(fmap) in [pd.DataFrame]:
+            fmap['id'] = fmap['id'].map(lambda x:f'f{x}')
+            fmap = fmap.set_index('id').to_dict()['name']
         tree_df = self._model.get_booster().trees_to_dataframe().sort_values('Gain', ascending=False)
 
         if fmap:
@@ -176,6 +179,17 @@ class Model():
             tree_df = tree_df.groupby('Feature').agg(Gain=('Gain','mean'), Cover=('Cover','mean')).sort_values(by=['Gain', 'Cover'], ascending=False).reset_index()
         return tree_df
     
+    @property
+    def save_dir(self):
+        return self._save_dir
+
+    @save_dir.setter
+    def save_dir(self, value):
+        self._save_dir = value
+
+    def save(self):
+        self.save_model()
+
     def result_graph(self, X, y):
         y_pred = self.predict_proba(X)
         plot_cls_result(y, y_pred)

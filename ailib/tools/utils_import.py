@@ -1,3 +1,4 @@
+import logging
 import math
 import os
 import pathlib
@@ -21,6 +22,7 @@ import torch.nn.functional as F
 import xgboost as xgb
 from ailib.local.ali.dataset_file import FileDataset, FileReader
 from ailib.local.ali.date import Date
+from ailib.local.ali.oss_file import MultiOSSFileReader
 from ailib.loss_function import SoftmaxMultiLabelLoss
 from ailib.models.base_model import BaseModel
 from ailib.models.base_model_param import BaseModelParam
@@ -39,9 +41,12 @@ from ailib.tools.utils_check import check_df_label, clean_df_label
 from ailib.tools.utils_dict import get_df_dict
 from ailib.tools.utils_encryption import md5, sha256
 from ailib.tools.utils_feature import IV, get_sparse_feature_IV
-from ailib.tools.utils_file import (get_svmlight_dim, load_fold_data,
-                                    load_fold_data_iter, load_svmlight,
-                                    save_svmlight)
+from ailib.tools.utils_file import (get_oss_files, get_oss_files_size,
+                                    get_oss_open_files, get_svmlight_dim,
+                                    load_files, load_fold_data,
+                                    load_fold_data_iter, load_oss_files,
+                                    load_oss_fold_data, load_svmlight,
+                                    open_oss_file, save_svmlight)
 from ailib.tools.utils_init import init_logger
 from ailib.tools.utils_ipython import display_html, display_img, display_pd
 from ailib.tools.utils_markdown import (df2markdown, label2markdown,
@@ -59,10 +64,12 @@ from ailib.tools.utils_visualization import (get_score_bin_statistic,
                                              plot_dict_bar, plot_dict_line,
                                              plot_time_distribute)
 from ailib.trainers import Trainer
-from sklearn.datasets import load_svmlight_file
+from sklearn.datasets import load_svmlight_file, load_svmlight_files
 from sklearn.model_selection import train_test_split
 from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset, IterableDataset
 from tqdm.auto import tqdm
 from transformers import AdamW, AutoModel, AutoTokenizer
 from treelib import Tree
+
+logger = logging.getLogger('__ailib__')

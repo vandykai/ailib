@@ -232,7 +232,7 @@ def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, ac
     result_df['lift_cumsum'] = result_df['precision']/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
     return result_df
 
-def plot_time_distribute(df, date_key, label_key, figsize='auto'):
+def plot_time_distribute(df, date_key, label_key, pos_label=1, figsize='auto'):
     '''
     打印：全量/正样本随时间的分布，
     :param df:
@@ -252,9 +252,10 @@ def plot_time_distribute(df, date_key, label_key, figsize='auto'):
     plt.subplot(1, 2, 1)
     plot_dict_bar(dict_value, figsize=None, y_type='cumsum')
     plt.subplot(1, 2, 2)
-    pos_df = df[df[label_key]==1]
+    pos_df = df[df[label_key]==pos_label]
     plot_dict_bar(pos_df[date_key].value_counts().to_dict(), figsize=None, y_type='cumsum')
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.5, hspace=None)
+    return plt
 
 def model_summary(model, *inputs, batch_size=-1, show_input=True):
     '''
