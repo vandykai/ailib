@@ -64,3 +64,10 @@ def get_df_dict(data_df, key_columns, value_columns, different='drop'):
         
     result_df = data_df.groupby(key_columns).apply(_get_df_dict)
     return result_df.to_dict()
+
+def dict_shrink(dict_value, interval=10):
+    dict_sorted_value = sorted(dict_value.items(), key=lambda x:float(str(x[0]).split('-')[0]))
+    dict_sorted_value = [dict_sorted_value[i:i+interval] for i in range(0, len(dict_sorted_value), interval)]
+    dict_value = {f"{it[0][0].split('-')[0]}-{it[-1][0].split('-')[-1]}":sum([sub_it[1] for sub_it in it]) for it in dict_sorted_value}
+
+    return dict_value

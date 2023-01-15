@@ -205,6 +205,7 @@ def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **k
         h, = plt.plot(x, y, **kwargs)
     return h
 
+
 def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, actual_pos_rate=None):
     y_true = np.array(y_true, dtype=np.int8)
     y_pred = np.array(y_pred, dtype=np.float64)

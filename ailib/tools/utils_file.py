@@ -119,7 +119,7 @@ def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False,
     else:
         svm_save_path = Path(svm_save_path)
         if svm_save_path.exists():
-            X, y = load_svmlight_file(str(svm_save_path), **kwargs)
+            X, y = load_svmlight_file(str(svm_save_path), zero_based=zero_based, **kwargs)
             return X, y
         fp = open(svm_save_path, 'wb+')
     if y_iter is None:
@@ -135,7 +135,7 @@ def load_svmlight(X_iter=None, y_iter=None, svm_save_path=None, on_memory=False,
             else:
                 fp.write((str(y_sample) + ' '+ ' '.join(X_sample) + '\n').encode('utf-8'))
     fp.seek(0)
-    X, y = load_svmlight_file(fp, **kwargs)
+    X, y = load_svmlight_file(fp, zero_based=zero_based, **kwargs)
     fp.close()
     if y_iter is None:
         return X
@@ -179,6 +179,16 @@ def load_fold_data(fold, pattern='*', func=pd.read_csv, recursive=False, debug=F
                 print(file_path)
             datas.append(func(file_path, **kwargs))
     return pd.concat(datas, ignore_index = True)
+
+def get_files(fold, pattern='*', recursive=False):
+    files = []
+    if recursive:
+        for file_path in Path(fold).rglob(pattern):
+            files.append(file_path)
+    else:
+        for file_path in Path(fold).glob(pattern):
+            files.append(file_path)
+    return files
 
 def load_files(file_paths, func=pd.read_csv, **kwargs):
     datas = []
@@ -400,7 +410,7 @@ def load_oss_files(oss_paths, oss_config, func=pd.read_csv, **kwargs):
             datas.append(func(bucket.get_object(oss_path), **kwargs))
     return pd.concat(datas, ignore_index = True)
 
-def get_oss_files_size(oss_paths, oss_config,):
+def get_oss_files_size(oss_paths, oss_config):
     total_content_length = 0
     auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
     for oss_path in oss_paths:
@@ -410,3 +420,37 @@ def get_oss_files_size(oss_paths, oss_config,):
         meta_info = bucket.get_object_meta(os.sep.join(oss_path.parts[2:]))
         total_content_length += meta_info.content_length
     return total_content_length
+
+def upload_file_to_oss(local_file, oss_path, oss_config):
+    oss_path = Path(oss_path)
+    local_dir = Path(local_dir)
+    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
+    bucket_name = oss_path.parts[1]
+    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    oss_path = os.sep.join(oss_path.parts[2:])
+    retry = 3
+    while retry > 0:
+        logger.info(f'uploading:{local_file} to {oss_path}')
+        result = bucket.put_object_from_file(oss_path, local_file)
+        if result.status == 200:
+            return 1
+        retry -= 1
+        logger.error(f'retry:{retry} upload:{local_file}')
+    return 0
+
+def upload_fold_to_oss(local_dir, pattern, oss_dir, oss_config):
+    oss_dir = Path(oss_dir)
+    local_dir = Path(local_dir)
+    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
+    bucket_name = oss_dir.parts[1]
+    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    for it in local_dir.glob(pattern):
+        retry = 3
+        while retry > 0:
+            oss_path = os.sep.join(oss_dir.parts[2:]+it.relative_to(local_dir).parts)
+            logger.info(f'uploading:{it} to {oss_path}')
+            result = bucket.put_object_from_file(oss_path, it)
+            if result.status == 200:
+                break
+            retry -= 1
+            logger.error(f'retry:{retry} upload:{it}')

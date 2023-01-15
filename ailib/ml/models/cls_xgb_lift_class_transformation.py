@@ -36,10 +36,11 @@ from sklearn.metrics import (auc, average_precision_score,
 from sklearn.model_selection import GridSearchCV, train_test_split
 from tqdm.auto import tqdm
 from xgboost import plot_importance, plot_tree, to_graphviz
-logger = logging.getLogger('__ailib__')
 from ailib.tools.utils_file import load_svmlight, get_svmlight_dim
 from ailib.tools.utils_random import seed_everything
 from scipy.sparse.csr import csr_matrix
+
+logger = logging.getLogger('__ailib__')
 
 class Model(XGBModel):
 

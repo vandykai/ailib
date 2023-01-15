@@ -81,7 +81,7 @@ class ModelParam(BaseModelParam):
         self.add(Param(name='sample_weight', value=None, desc="sample weight"))
         self.add(Param(name='early_stopping_rounds', value=None, desc="early stopping rounds"))
         self.add(Param(name='eval_metric', value=['error','logloss', 'auc'], desc="eval metric"))
-        self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) to split train_set"))
+        self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) or a callable function to split train_set"))
         self.add(Param(name='verbose', value=True, desc="verbose"))
         self.add(Param(name='output_dir', value='outputs', desc="outputs"))
 
@@ -153,9 +153,14 @@ class Model():
             "tree_method":self.config.tree_method,
             "scale_pos_weight":self.config.scale_pos_weight
         }
-        if isinstance(self.config.eval_set, float):
-            train_index, test_index = train_test_split(range(len(svm_file_paths)), test_size=self.config.eval_set, random_state=self.config.seed)
-            train_svm_files, test_svm_files = svm_file_paths[train_index], svm_file_paths[test_index]
+        if self.config.eval_set is not None:
+            if isinstance(self.config.eval_set, float):
+                train_index, test_index = train_test_split(range(len(svm_file_paths)), test_size=self.config.eval_set, random_state=self.config.seed)
+                train_svm_files, test_svm_files = svm_file_paths[train_index], svm_file_paths[test_index]
+            elif callable(self.config.eval_set):
+                train_svm_files, test_svm_files = self.config.eval_set(svm_file_paths)
+            else:
+                raise ValueError(f'eval_set:{self.config.eval_set} must be float or callable or None')
             if is_memory_enough(file_content_length):
                 logger.info(f'memory enough, load svmfile into memory')
                 self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiOSSFileReader(map(file_path_handler, train_svm_files))))
@@ -166,7 +171,7 @@ class Model():
                 self.test_Xy = xgb.DMatrix(XGBIterator(test_svm_files, file_path_handler, self.config.model_name))
             if self.config.sample_weight is not None:
                 self.train_Xy.set_weight(self.config.sample_weight[train_index])
-            eval_set = [(self.train_Xy, "train"),(self.test_Xy, "test") ]
+            eval_set = [(self.train_Xy, "train"),(self.test_Xy, "test")]
         else:
             if is_memory_enough(file_content_length):
                 logger.info(f'memory enough, load svmfile into memory')

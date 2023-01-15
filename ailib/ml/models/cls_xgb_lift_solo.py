@@ -1,4 +1,4 @@
-from ailib.ml.models.cls_xgb import Model as XGBModel
+from ailib.ml.models.cls_xgb import Model as XGBModel, ModelParam
 import logging
 import logging
 import os
@@ -48,7 +48,7 @@ class Model(XGBModel):
         if not isinstance(X, csr_matrix):
             logger.info(f'convert data format to svmlight')
             _, w = get_svmlight_dim(X)
-            X, y = load_svmlight([X, f'{w+1}:{treatment}'], y, on_memory=False)
+            X, y = load_svmlight(zip(*[X, [f'{w+1}:{it}' for it in treatment]]), y, on_memory=False)
         config_args = {
             "sample_weight":self.config.sample_weight,
             "early_stopping_rounds":self.config.early_stopping_rounds,
@@ -76,7 +76,7 @@ class Model(XGBModel):
         logger.info(f'start step fitting')
         if not isinstance(X, csr_matrix):
             _, w = get_svmlight_dim(X)
-            X, y = load_svmlight([X, f'{w+1}:{treatment}'], y, on_memory=False)
+            X, y = load_svmlight(zip(*[X, [f'{w+1}:{it}' for it in treatment]]), y, on_memory=False)
         config_args = {
             "sample_weight":self.config.sample_weight,
             "early_stopping_rounds":self.config.early_stopping_rounds,
@@ -100,8 +100,8 @@ class Model(XGBModel):
         Perform uplift on samples in X.
         """
         _, w = get_svmlight_dim(X)
-        X_mod_trmnt= load_svmlight([X, f'{w+1}:{1}'], on_memory=False)
-        X_mod_ctrl = load_svmlight([X, f'{w+1}:{0}'], on_memory=False)
+        X_mod_trmnt= load_svmlight(zip(*[X, [f'{w+1}:{1}' for it in range(len(X))]]), None, on_memory=False)
+        X_mod_ctrl = load_svmlight(zip(*[X, [f'{w+1}:{0}' for it in range(len(X))]]), None, on_memory=False)
 
         self.trmnt_preds_ = self._model.predict_proba(X_mod_trmnt)[:, 1]
         self.ctrl_preds_ = self._model.predict_proba(X_mod_ctrl)[:, 1]
