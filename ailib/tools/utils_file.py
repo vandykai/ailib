@@ -193,7 +193,11 @@ def get_files(fold, pattern='*', recursive=False):
 def load_files(file_paths, func=pd.read_csv, **kwargs):
     datas = []
     for file_path in file_paths:
-        datas.append(func(file_path, **kwargs))
+        try:
+            datas.append(func(file_path, **kwargs))
+        except pd.errors.EmptyDataError as e:
+            logger.error(f"{file_path} is empty")
+            pass
     return pd.concat(datas, ignore_index = True)
 
 def load_fold_data_iter(fold, pattern='*', func=pd.read_csv, recursive=False, split=None, debug=False, **kwargs):

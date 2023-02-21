@@ -45,3 +45,8 @@ def check_is_binary(array):
         raise ValueError(f"Input array is not binary. "
                          f"Array should contain only int or float binary values 0 (or 0.) and 1 (or 1.). "
                          f"Got values {np.unique(array)}.")
+
+def ismd5(md5str):
+    if len(md5str)!= 32:
+        return False
+    return all(map(lambda x:(x>='0' and x<='9') or (x>='a' and x<='f'), md5str))
