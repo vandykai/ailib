@@ -4,9 +4,9 @@ import pathlib
 import pickle
 import sys
 import time
-import traceback
 from collections import defaultdict
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from random import random
 from typing import Callable, List
@@ -16,23 +16,10 @@ import graphviz
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import psutil
 import scipy.sparse as sp
 import seaborn as sns
 import xgboost as xgb
-from ailib.models.base_model import BaseModel
-from ailib.models.base_model_param import BaseModelParam
-from ailib.param import hyper_spaces
-from ailib.param.param import Param
-from ailib.tools.utils_file import get_oss_files_size, load_svmlight, open_oss_file
-from ailib.tools.utils_random import seed_everything
-from ailib.tools.utils_visualization import (get_score_bin_statistic,
-                                             plot_cls_auc, plot_cls_result,
-                                             plot_confusion_matrix,
-                                             plot_fpr_tpr_curve, plot_ks_curve,
-                                             plot_precision_recall_curve,
-                                             plot_roc_curve,
-                                             precision_recall_curve)
-from ailib.tools.utils_oss import MultiStreamReader
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from matplotlib import pyplot as plt
@@ -46,16 +33,34 @@ from sklearn.metrics import (auc, average_precision_score,
 from sklearn.model_selection import GridSearchCV, train_test_split
 from tqdm.auto import tqdm
 from xgboost import plot_importance, plot_tree, to_graphviz
-import psutil
+
+from ailib.models.base_model import BaseModel
+from ailib.models.base_model_param import BaseModelParam
+from ailib.param import hyper_spaces
+from ailib.param.param import Param
+from ailib.tools.utils_file import (get_files_size,
+                                    load_svmlight)
+from ailib.tools.utils_oss import open_oss_file
+from ailib.tools.utils_random import seed_everything
+from ailib.tools.utils_stream import MultiStreamReader
+from ailib.tools.utils_visualization import (get_score_bin_statistic,
+                                             plot_cls_auc, plot_cls_result,
+                                             plot_confusion_matrix,
+                                             plot_fpr_tpr_curve, plot_ks_curve,
+                                             plot_precision_recall_curve,
+                                             plot_roc_curve,
+                                             precision_recall_curve)
+
+logger = logging.getLogger('__ailib__')
 
 def is_memory_enough(file_size):
+    if file_size is None:
+        return True
     mem = psutil.virtual_memory()
     logger.info(f'memory available:{mem.available} file_size:{file_size}')
     if mem.available > 2*file_size:
         return True
     return False
-
-logger = logging.getLogger('__ailib__')
 
 class ModelParam(BaseModelParam):
 
@@ -86,11 +91,11 @@ class ModelParam(BaseModelParam):
         self.add(Param(name='output_dir', value='outputs', desc="outputs"))
 
 class XGBIterator(xgb.DataIter):
-    def __init__(self, svm_file_paths: List[str], file_path_handler, model_name=None):
-        self._file_paths = svm_file_paths
-        self._file_path_handler = file_path_handler if file_path_handler is not None else lambda x:x
+    def __init__(self, file_paths: List[str], file_handler, model_name=None):
+        self._file_paths = file_paths
+        self._file_handler = file_handler if file_handler is not None else lambda x:x
         self._it = 0
-        self._pbar = tqdm(total=len(svm_file_paths))
+        self._pbar = tqdm(total=len(file_paths))
         self._pbar.set_description(model_name)
         super().__init__(cache_prefix=os.path.join(".", f"cache-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')}"))
 
@@ -99,12 +104,7 @@ class XGBIterator(xgb.DataIter):
             # return 0 to let XGBoost know this is the end of iteration
             return 0
         try:
-            if type(self._file_paths[self._it]) == str and self._file_paths[self._it].startswith('oss:/'):
-                X, y = load_svmlight_file(self._file_path_handler(self._file_paths[self._it]), zero_based=True)
-            else:
-                X, y = load_svmlight_file(self._file_path_handler(self._file_paths[self._it]), zero_based=True)
-            if hasattr(self._file_paths[self._it], 'close'):
-                self._file_paths[self._it].close()
+            X, y = self._file_handler(self._file_paths[self._it])
             input_data(
                 data=X,
                 label=y,
@@ -121,6 +121,7 @@ class XGBIterator(xgb.DataIter):
         """Reset the iterator to its beginning"""
         self._it = 0
 
+
 class Model():
     def __init__(self, config):
         super().__init__()
@@ -133,10 +134,9 @@ class Model():
         self.oot_Xy = None
         self.evals_result = {}
 
-    def fit(self, svm_file_paths, file_path_handler=None, oss_config=None, **kwargs):
+    def fit(self, file_paths, file_handler=partial(load_svmlight_file, zero_based=True), file_size=None, **kwargs):
         self.reset()
-        svm_file_paths = np.array(svm_file_paths)
-        file_content_length = get_oss_files_size(svm_file_paths, oss_config)
+        file_paths = np.array(file_paths)
         logger.info(f'start fitting')
         config_args = {
             "nthread":self.config.nthread,
@@ -155,30 +155,32 @@ class Model():
         }
         if self.config.eval_set is not None:
             if isinstance(self.config.eval_set, float):
-                train_index, test_index = train_test_split(range(len(svm_file_paths)), test_size=self.config.eval_set, random_state=self.config.seed)
-                train_svm_files, test_svm_files = svm_file_paths[train_index], svm_file_paths[test_index]
+                train_index, test_index = train_test_split(range(len(file_paths)), test_size=self.config.eval_set, random_state=self.config.seed)
+                train_files, test_files = file_paths[train_index], file_paths[test_index]
             elif callable(self.config.eval_set):
-                train_svm_files, test_svm_files = self.config.eval_set(svm_file_paths)
+                train_files, test_files = self.config.eval_set(file_paths)
             else:
                 raise ValueError(f'eval_set:{self.config.eval_set} must be float or callable or None')
-            if is_memory_enough(file_content_length):
-                logger.info(f'memory enough, load svmfile into memory')
-                self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, train_svm_files)), zero_based=True))
-                self.test_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, test_svm_files)), zero_based=True))
+            if is_memory_enough(file_size):
+                logger.info(f'memory enough, load file into memory')
+                x, y = zip(*[file_handler(it) for it in train_files])
+                self.train_Xy = xgb.DMatrix(np.vstack(x), np.hstack(y))
+                x, y = zip(*[file_handler(it) for it in test_files])
+                self.test_Xy = xgb.DMatrix(np.vstack(x), np.hstack(y))
             else:
                 logger.info(f'memory not enough, load svmfile into externel memory')
-                self.train_Xy = xgb.DMatrix(XGBIterator(train_svm_files, file_path_handler, self.config.model_name))
-                self.test_Xy = xgb.DMatrix(XGBIterator(test_svm_files, file_path_handler, self.config.model_name))
+                self.train_Xy = xgb.DMatrix(XGBIterator(train_files, file_handler, self.config.model_name))
+                self.test_Xy = xgb.DMatrix(XGBIterator(test_files, file_handler, self.config.model_name))
             if self.config.sample_weight is not None:
                 self.train_Xy.set_weight(self.config.sample_weight[train_index])
             eval_set = [(self.train_Xy, "train"),(self.test_Xy, "test")]
         else:
-            if is_memory_enough(file_content_length):
+            if is_memory_enough(file_size):
                 logger.info(f'memory enough, load svmfile into memory')
-                self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, svm_file_paths)), zero_based=True))
+                self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_handler, file_paths))))
             else:
                 logger.info(f'memory not enough, load svmfile into externel memory')
-                self.train_Xy = xgb.DMatrix(XGBIterator(svm_file_paths, file_path_handler, self.config.model_name))
+                self.train_Xy = xgb.DMatrix(XGBIterator(file_paths, file_handler, self.config.model_name))
             eval_set = self.config.eval_set
         logger.info(f'fit args:{config_args}')
         self._model = xgb.train(params=config_args, dtrain=self.train_Xy, num_boost_round=self.config.n_estimators,
@@ -305,6 +307,7 @@ class Model():
         plt.close()
         score_bin_statistic_df = get_score_bin_statistic(y_true,y_pred)
         score_bin_statistic_df.to_csv(self._save_dir.joinpath("score_bin_statistic_df.csv"), index=False)
+
 
 
 

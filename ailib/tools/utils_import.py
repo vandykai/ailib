@@ -46,19 +46,19 @@ from ailib.tools.utils_check import check_df_label, clean_df_label, ismd5
 from ailib.tools.utils_dict import dict_shrink, get_df_dict
 from ailib.tools.utils_encryption import md5, sha256
 from ailib.tools.utils_feature import IV, get_sparse_feature_IV
-from ailib.tools.utils_file import (get_files, get_oss_files,
-                                    get_oss_files_size, get_oss_open_files,
+from ailib.tools.utils_file import (get_files, get_files_size,
                                     get_svmlight_dim, load_files,
                                     load_fold_data, load_fold_data_iter,
-                                    load_oss_files, load_oss_fold_data,
-                                    load_svmlight, open_oss_file,
-                                    save_svmlight, save_to_file,
-                                    upload_file_to_oss, upload_fold_to_oss)
+                                    load_svmlight, save_svmlight, save_to_file)
 from ailib.tools.utils_init import init_logger
 from ailib.tools.utils_ipython import display_html, display_img, display_pd
 from ailib.tools.utils_markdown import (df2markdown, label2markdown,
                                         list2markdown)
 from ailib.tools.utils_name_parse import parse_activation
+from ailib.tools.utils_oss import (get_oss_files, get_oss_files_size,
+                                   get_oss_open_files, load_oss_files,
+                                   load_oss_fold_data, open_oss_file,
+                                   upload_file_to_oss, upload_fold_to_oss)
 from ailib.tools.utils_persistence import (load_dill, load_model,
                                            load_model2oss, load_pickle,
                                            save_dill, save_model,
@@ -66,6 +66,7 @@ from ailib.tools.utils_persistence import (load_dill, load_model,
 from ailib.tools.utils_random import df_cut, df_cut_sample, seed_everything
 from ailib.tools.utils_statistic import (get_sample_rate_for_equal_dist,
                                          regularization)
+from ailib.tools.utils_stream import MultiStreamReader
 from ailib.tools.utils_visualization import (get_score_bin_statistic,
                                              plot_cls_auc, plot_cls_result,
                                              plot_dict_bar, plot_dict_line,
