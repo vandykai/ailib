@@ -64,7 +64,8 @@ from ailib.tools.utils_persistence import (load_dill, load_model,
                                            save_dill, save_model,
                                            save_model2oss, save_pickle)
 from ailib.tools.utils_random import df_cut, df_cut_sample, seed_everything
-from ailib.tools.utils_statistic import (get_sample_rate_for_equal_dist,
+from ailib.tools.utils_statistic import (get_distribute_dict,
+                                         get_sample_rate_for_equal_dist,
                                          regularization)
 from ailib.tools.utils_stream import MultiStreamReader
 from ailib.tools.utils_visualization import (get_score_bin_statistic,
