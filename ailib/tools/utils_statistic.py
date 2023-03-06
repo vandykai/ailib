@@ -5,6 +5,8 @@ from torch._six import inf
 from typing import Union, Iterable
 import numpy as np
 import random
+import pandas as pd
+
 _tensor_or_tensors = Union[torch.Tensor, Iterable[torch.Tensor]]
 
 def get_mean_and_std(dataset):
@@ -192,3 +194,10 @@ def get_sample_rate_for_equal_dist(mark_dist, sample_dist, max_sample_rate=None)
         sample_rate[key] = sample_rate[key]/ max_sample_rate
     print(f"样本预估数:{sum(sample_dist.values())/max_sample_rate}")
     return sample_rate
+
+def get_distribute(x, bins = 10, min_value = 0, max_value = 1):
+    step = (max_value-min_value)/bins
+    max_value = max_value + step
+    dict_value = pd.cut(x, bins = np.arange(0, 1, step)).value_counts()
+    dict_value = {str(k):v for k, v in dict_value.items()}
+    return dict_value

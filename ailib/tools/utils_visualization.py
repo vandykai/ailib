@@ -164,7 +164,12 @@ def plot_dict_bar(dict_value, y_type='percent', figsize='auto', reverse=True, **
         fig = plt.figure(figsize=figsize)
     elif figsize:
         fig = plt.figure(figsize=figsize)
-    dict_value = sorted(dict_value.items(), key=lambda x:float(str(x[0]).split('-')[0]))
+    def key_compare(x):
+        try:
+            return float(str(x[0]).split('-')[0])
+        except:
+            return x
+    dict_value = sorted(dict_value.items(), key=key_compare)
     x = [str(it[0]) for it in dict_value]
     y = [it[1] for it in dict_value]
     plt.title(f"total num:{sum(y)}")
@@ -188,7 +193,12 @@ def plot_dict_bar(dict_value, y_type='percent', figsize='auto', reverse=True, **
 def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
     if figsize:
         fig = plt.figure(figsize=figsize)
-    dict_value = sorted(dict_value.items(), key=lambda x:float(str(x[0]).split('-')[0]))
+    def key_compare(x):
+        try:
+            return float(str(x[0]).split('-')[0])
+        except:
+            return x
+    dict_value = sorted(dict_value.items(), key=key_compare)
     x = [str(it[0]) for it in dict_value]
     y = [it[1] for it in dict_value]
     if y_type == 'cumsum':

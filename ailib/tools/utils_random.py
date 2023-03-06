@@ -149,7 +149,7 @@ def df_cut_sample(df, column, bins, **kwargs):
     sample_nums = bins.values()
     if '__cut' in df.columns:
         raise ValueError("__cut name alreadt in df's columns")
-    df['__cut'] = cut(df[column], interval_bins, labels=range(len(bins)))
+    df['__cut'] = df_cut(df[column], interval_bins, labels=range(len(bins)))
     result = []
     for cut_idx, sample_num in zip(range(len(bins)), sample_nums):
         if int(sample_num)==sample_num:

@@ -46,7 +46,7 @@ from ailib.tools.utils_check import check_df_label, clean_df_label, ismd5
 from ailib.tools.utils_dict import dict_shrink, get_df_dict
 from ailib.tools.utils_encryption import md5, sha256
 from ailib.tools.utils_feature import IV, get_sparse_feature_IV
-from ailib.tools.utils_file import (get_files, get_files_size,
+from ailib.tools.utils_file import (count_line, get_files, get_files_size,
                                     get_svmlight_dim, load_files,
                                     load_fold_data, load_fold_data_iter,
                                     load_svmlight, save_svmlight, save_to_file)
