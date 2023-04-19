@@ -166,7 +166,15 @@ def plot_dict_bar(dict_value, y_type='percent', figsize='auto', reverse=True, **
         fig = plt.figure(figsize=figsize)
     def key_compare(x):
         try:
-            return float(str(x[0]).split('-')[0])
+            key = str(x[0])
+            split_pos = len(key)
+            if key.count('-') == 3: # '-a--b'
+                split_pos = key.index('-', key.index('-')+1)
+            elif key.count('-') == 2: # '-a-b' 'a--b'
+                split_pos = key.index('-', 1)
+            elif key.count('-') == 1: # 'a-b'
+                split_pos = key.index('-')
+            return float(key[:split_pos])
         except:
             return x
     dict_value = sorted(dict_value.items(), key=key_compare)
@@ -189,6 +197,49 @@ def plot_dict_bar(dict_value, y_type='percent', figsize='auto', reverse=True, **
         h = plt.bar(x, y, **kwargs)
         plt.bar_label(h)
     return h
+
+def plot_dict_bars(dict_list, y_types='percent', titles='', figsize='auto', reverse=True, **kwargs):
+    if figsize=='auto':
+        figsize = (len(dict_list)*10, max(map(len, dict_list))/5)
+    if isinstance(y_types, str):
+        y_types = [y_types] * len(dict_list)
+    if isinstance(titles, str):
+        titles = [titles] * len(dict_list)
+    fig, subfig = plt.subplots(nrows=1, ncols=len(dict_list), figsize=figsize)
+    def key_compare(x):
+        try:
+            key = str(x[0])
+            split_pos = len(key)
+            if key.count('-') == 3: # '-a--b'
+                split_pos = key.index('-', key.index('-')+1)
+            elif key.count('-') == 2: # '-a-b' 'a--b'
+                split_pos = key.index('-', 1)
+            elif key.count('-') == 1: # 'a-b'
+                split_pos = key.index('-')
+            return float(key[:split_pos])
+        except:
+            return x
+    for dict_value, y_type, title, ax in zip(dict_list, y_types, titles, subfig):
+        dict_value = sorted(dict_value.items(), key=key_compare)
+        x = [str(it[0]) for it in dict_value]
+        y = [it[1] for it in dict_value]
+        ax.set_title(f"{title} total num:{sum(y)}")
+        assert y_type in ['cumsum', 'count', 'percent']
+        if y_type == 'cumsum':
+            y = np.cumsum(y)/sum(y)
+        elif y_type == 'percent':
+            y = np.array(y)/sum(y)
+
+        num=np.arange(len(y))
+        if reverse:
+            ax.set_ylim(min(num)-1,max(num)+1)
+            h = ax.barh(x, y, **kwargs)
+            ax.bar_label(h)
+        else:
+            ax.set_xlim(min(num)-1,max(num)+1)
+            h = ax.bar(x, y, **kwargs)
+            ax.bar_label(h)
+    return plt
 
 def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
     if figsize:

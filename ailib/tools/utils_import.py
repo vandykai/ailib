@@ -55,9 +55,11 @@ from ailib.tools.utils_ipython import display_html, display_img, display_pd
 from ailib.tools.utils_markdown import (df2markdown, label2markdown,
                                         list2markdown)
 from ailib.tools.utils_name_parse import parse_activation
-from ailib.tools.utils_oss import (get_oss_files, get_oss_files_size,
-                                   get_oss_open_files, load_oss_files,
-                                   load_oss_fold_data, open_oss_file,
+from ailib.tools.utils_oss import (get_oss_download_url, get_oss_download_urls,
+                                   get_oss_files, get_oss_files_size,
+                                   get_oss_open_files, get_oss_upload_urls,
+                                   load_oss_files, load_oss_fold_data,
+                                   load_oss_fold_data_dict, open_oss_file,
                                    upload_file_to_oss, upload_fold_to_oss)
 from ailib.tools.utils_persistence import (load_dill, load_model,
                                            load_model2oss, load_pickle,
@@ -68,9 +70,11 @@ from ailib.tools.utils_statistic import (get_distribute_dict,
                                          get_sample_rate_for_equal_dist,
                                          regularization)
 from ailib.tools.utils_stream import MultiStreamReader
+from ailib.tools.utils_url import url_parse
 from ailib.tools.utils_visualization import (get_score_bin_statistic,
                                              plot_cls_auc, plot_cls_result,
-                                             plot_dict_bar, plot_dict_line,
+                                             plot_dict_bar, plot_dict_bars,
+                                             plot_dict_line,
                                              plot_time_distribute)
 from ailib.trainers import Trainer
 

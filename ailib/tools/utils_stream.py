@@ -6,13 +6,26 @@ class MultiStreamReader():
         self._stream_objs = stream_objs
         self._skip_head = skip_head
         self._cur_obj = None
+        self._quene = []
+        self._should_skip_head = skip_head
 
     def __iter__(self):
         for stream_obj in tqdm(self._stream_objs):
-            for idx, line in enumerate(stream_obj):
-                if self._skip_head and idx==0:
-                    pass
-                yield line
+            for _, line in enumerate(stream_obj):
+                line = line.split(b'\n')
+                self._quene.append(line[0])
+                del line[0]
+                while line:
+                    #self._quene.append(b'\n')
+                    if self._should_skip_head:
+                        self._should_skip_head = False
+                    else:
+                        yield b''.join(self._quene)
+                    self._quene.clear()
+                    self._quene.append(line[0])
+                    del line[0]
+            if not self._should_skip_head and self._quene:
+                yield b''.join(self._quene)
 
     def read(self, size=-1):
         if self._cur_obj is None:

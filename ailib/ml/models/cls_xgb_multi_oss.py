@@ -75,7 +75,7 @@ class ModelParam(BaseModelParam):
         self.add(Param(name='colsample_bytree', value=0.8, desc="colsample bytree"))
         self.add(Param(name='reg_lambda', value=1, desc="reg_lambda"))
         self.add(Param(name='reg_alpha', value=5e-05, desc="reg alpha"))
-        self.add(Param(name='objective', value='binary:logistic', desc="objective"))
+        self.add(Param(name='objective', value=None, desc="objective"))
         self.add(Param(name='obj', value=None, desc="obj"))
         self.add(Param(name='nthread', value=20, desc="nthread"))
         self.add(Param(name='scale_pos_weight', value=1, desc="scale pos weight"))
@@ -83,7 +83,7 @@ class ModelParam(BaseModelParam):
 
         self.add(Param(name='sample_weight', value=None, desc="sample weight"))
         self.add(Param(name='early_stopping_rounds', value=None, desc="early stopping rounds"))
-        self.add(Param(name='eval_metric', value=['error','logloss', 'auc'], desc="eval metric"))
+        self.add(Param(name='eval_metric', value=['error','logloss'], desc="eval metric"))
         self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) or a callable function to split train_set"))
         self.add(Param(name='verbose', value=True, desc="verbose"))
         self.add(Param(name='output_dir', value='outputs', desc="outputs"))
@@ -166,8 +166,18 @@ class Model():
                 raise ValueError(f'eval_set:{self.config.eval_set} must be float or callable or None')
             if is_memory_enough(file_content_length):
                 logger.info(f'memory enough, load svmfile into memory')
-                self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, train_svm_files)), zero_based=True))
-                self.test_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, test_svm_files)), zero_based=True))
+                print(train_svm_files)
+                X, y = load_svmlight_file(MultiStreamReader(map(file_path_handler, train_svm_files)), zero_based=True)
+                y = list(map(lambda x:list(map(int, list(f"{int(x):03}"))), y))
+                
+                #y = list(map(lambda x:int(str(int(x))[1]), y))
+                self.train_Xy = xgb.DMatrix(X, y)
+                print(train_svm_files)
+                X, y = load_svmlight_file(MultiStreamReader(map(file_path_handler, test_svm_files)), zero_based=True)
+                y = list(map(lambda x:list(map(int, list(f"{int(x):03}"))), y))
+                
+                #y = list(map(lambda x:int(str(int(x))[1]), y))
+                self.test_Xy = xgb.DMatrix(X, y)
             else:
                 logger.info(f'memory not enough, load svmfile into externel memory')
                 self.train_Xy = xgb.DMatrix(XGBIterator(train_svm_files, file_path_handler, self.config.model_name))
