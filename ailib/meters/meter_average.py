@@ -24,3 +24,10 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+    def gather(self, meters):
+        for meter in meters:
+            if self.rank != meter.rank:
+                self.count += meter.count
+                self.sum += meter.sum
+        self.avg = self.sum / self.count

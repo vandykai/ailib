@@ -10,7 +10,8 @@ class BaseMetric(abc.ABC):
 
     ALIAS = 'base_metric'
 
-    def __init__(self):
+    def __init__(self, rank=0):
+        self.rank = rank
         self.reset()
 
     def reset(self):
@@ -30,6 +31,12 @@ class BaseMetric(abc.ABC):
     def update(self, y_true: list, y_pred: list):
         self.y_trues.append(y_true)
         self.y_preds.append(y_pred)
+
+    def gather(self, metrics):
+        for metric in metrics:
+            if self.rank != metric.rank:
+                self.y_trues.extend(metric.y_trues)
+                self.y_preds.extend(metric.y_preds)
 
     def result(self):
         y_true = [ex for item in self.y_trues for ex in item]

@@ -9,8 +9,8 @@ class AUC(ClassificationMetric):
 
     ALIAS = ['auc']
 
-    def __init__(self, pos_label=1):
-        super().__init__()
+    def __init__(self, pos_label=1, rank=0):
+        super().__init__(rank=rank)
         self.pos_label = pos_label
 
     def __repr__(self) -> str:
