@@ -10,7 +10,8 @@ class AverageMeter(object):
         >>> cur_loss = loss.avg
     '''
 
-    def __init__(self):
+    def __init__(self, rank=0):
+        self.rank = rank
         self.reset()
 
     def reset(self):
