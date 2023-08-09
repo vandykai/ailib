@@ -3,13 +3,14 @@ import prettytable
 import numpy as np
 import pandas as pd
 from collections import Counter
+import markdown
+import pdfkit
 
 def df2markdown(data_df: pd.DataFrame):
     # 将DataFrame转换为markdown表格格式
     table = prettytable.PrettyTable(data_df.columns.tolist())
     table.set_style(prettytable.MARKDOWN)
     table.add_rows(data_df.values)
-    print(table)
     return table
 
 def list2markdown(data_list: list, columns: typing.Union[int, list]):
@@ -20,7 +21,6 @@ def list2markdown(data_list: list, columns: typing.Union[int, list]):
     table = prettytable.PrettyTable(columns)
     table.set_style(prettytable.MARKDOWN)
     table.add_rows(np.array(data_list).reshape(-1, len(columns)))
-    print(table)
     return table
 
 def label2markdown(label_list: list, columns: list = ['标签','数量','百分比']):
@@ -36,4 +36,11 @@ def label2markdown(label_list: list, columns: list = ['标签','数量','百分�
         sum_value += value
     for key, value in counter:
         table.add_row([key, value, "{0:.2f}%".format(value*100/sum_value)])
-    print(table)
+    return table
+
+def markdown2pdf(input_path, output_path):
+    with open(input_path, "r") as f:
+        md_content = f.read()
+    header = '<head><meta charset="UTF-8"></head>\n'
+    html_content = header + markdown.markdown(md_content, extensions=['tables'])
+    pdfkit.from_string(html_content, output_path)

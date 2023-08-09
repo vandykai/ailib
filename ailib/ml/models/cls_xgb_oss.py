@@ -2,10 +2,9 @@ import logging
 import os
 import pathlib
 import pickle
-import sys
 import time
 import traceback
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from datetime import datetime
 from pathlib import Path
 from random import random
@@ -38,7 +37,9 @@ from ailib.models.base_model import BaseModel
 from ailib.models.base_model_param import BaseModelParam
 from ailib.param import hyper_spaces
 from ailib.param.param import Param
+from ailib.tools.utils_encryption import to_base64
 from ailib.tools.utils_file import load_svmlight
+from ailib.tools.utils_markdown import df2markdown, markdown2pdf
 from ailib.tools.utils_oss import get_oss_files_size, open_oss_file
 from ailib.tools.utils_random import seed_everything
 from ailib.tools.utils_stream import MultiStreamReader
@@ -83,7 +84,7 @@ class ModelParam(BaseModelParam):
 
         self.add(Param(name='sample_weight', value=None, desc="sample weight"))
         self.add(Param(name='early_stopping_rounds', value=None, desc="early stopping rounds"))
-        self.add(Param(name='eval_metric', value=['error','logloss', 'auc'], desc="eval metric"))
+        self.add(Param(name='eval_metric', value=['auc', 'error','logloss'], desc="eval metric"))
         self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) or a callable function to split train_set"))
         self.add(Param(name='verbose', value=True, desc="verbose"))
         self.add(Param(name='output_dir', value='outputs', desc="outputs"))
@@ -136,13 +137,15 @@ class Model():
         self.oot_Xy = None
         self.evals_result = {}
 
-    def fit(self, svm_file_paths, file_path_handler=None, oss_config=None, **kwargs):
+    def fit(self, svm_file_paths, file_path_handler=None, **kwargs):
         self.reset()
         svm_file_paths = np.array(svm_file_paths)
-        file_content_length = get_oss_files_size(svm_file_paths, oss_config)
+        file_content_length = get_oss_files_size(svm_file_paths)
         logger.info(f'start fitting')
+        logger.info(f'model param: {self.config}')
         config_args = {
             "nthread":self.config.nthread,
+            'objective':self.config.objective,
             "eta":self.config.learning_rate,
             "gamma":self.config.gamma,
             "max_depth":self.config.max_depth,
@@ -308,6 +311,3 @@ class Model():
         plt.close()
         score_bin_statistic_df = get_score_bin_statistic(y_true,y_pred)
         score_bin_statistic_df.to_csv(self._save_dir.joinpath("score_bin_statistic_df.csv"), index=False)
-
-
-

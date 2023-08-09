@@ -2,7 +2,6 @@ import logging
 import os
 import pathlib
 import pickle
-import sys
 import time
 import traceback
 from collections import defaultdict
@@ -22,6 +21,7 @@ import seaborn as sns
 import xgboost as xgb
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
+from flask import config
 from matplotlib import pyplot as plt
 from scipy import stats
 from scipy.sparse.csr import csr_matrix
@@ -75,7 +75,7 @@ class ModelParam(BaseModelParam):
         self.add(Param(name='colsample_bytree', value=0.8, desc="colsample bytree"))
         self.add(Param(name='reg_lambda', value=1, desc="reg_lambda"))
         self.add(Param(name='reg_alpha', value=5e-05, desc="reg alpha"))
-        self.add(Param(name='objective', value=None, desc="objective"))
+        self.add(Param(name='objective', value='binary:logistic', desc="objective"))
         self.add(Param(name='obj', value=None, desc="obj"))
         self.add(Param(name='nthread', value=20, desc="nthread"))
         self.add(Param(name='scale_pos_weight', value=1, desc="scale pos weight"))
@@ -83,7 +83,7 @@ class ModelParam(BaseModelParam):
 
         self.add(Param(name='sample_weight', value=None, desc="sample weight"))
         self.add(Param(name='early_stopping_rounds', value=None, desc="early stopping rounds"))
-        self.add(Param(name='eval_metric', value=['error','logloss'], desc="eval metric"))
+        self.add(Param(name='eval_metric', value=['auc', 'error','logloss'], desc="eval metric"))
         self.add(Param(name='eval_set', value=0.2, desc="eval_set set by hand or a float number between (0, 1) or a callable function to split train_set"))
         self.add(Param(name='verbose', value=True, desc="verbose"))
         self.add(Param(name='output_dir', value='outputs', desc="outputs"))
@@ -129,20 +129,24 @@ class Model():
         super().__init__()
         self.config = config
         self._save_dir = Path(f"./{config.output_dir}")/config.model_name/time.strftime("%Y-%m-%d-%H-%M-%S",time.localtime(time.time()))
+        self.initd = False
 
     def reset(self):
         self.train_Xy = None
         self.test_Xy = None
         self.oot_Xy = None
+        self.initd = False
+        self.config_args = None
+        self.eval_set = None
         self.evals_result = {}
 
-    def fit(self, svm_file_paths, file_path_handler=None, **kwargs):
+    def init(self):
         self.reset()
-        svm_file_paths = np.array(svm_file_paths)
-        file_content_length = get_oss_files_size(svm_file_paths)
         logger.info(f'start fitting')
-        config_args = {
+        logger.info(f'model param: {self.config.__dict__}')
+        self.config_args = {
             "nthread":self.config.nthread,
+            'objective':self.config.objective,
             "eta":self.config.learning_rate,
             "gamma":self.config.gamma,
             "max_depth":self.config.max_depth,
@@ -156,49 +160,41 @@ class Model():
             "tree_method":self.config.tree_method,
             "scale_pos_weight":self.config.scale_pos_weight
         }
+        self.initd = True
+        logger.info(f'fit args:{self.config_args}')
+
+    def fit(self, X, y, **kwargs):
+        self.init()
+        if not isinstance(X, csr_matrix):
+            logger.info(f'convert data format to svmlight')
+            X, y = load_svmlight(X, y, on_memory=False)
+
         if self.config.eval_set is not None:
             if isinstance(self.config.eval_set, float):
-                train_index, test_index = train_test_split(range(len(svm_file_paths)), test_size=self.config.eval_set, random_state=self.config.seed)
-                train_svm_files, test_svm_files = svm_file_paths[train_index], svm_file_paths[test_index]
-            elif callable(self.config.eval_set):
-                train_svm_files, test_svm_files = self.config.eval_set(svm_file_paths)
-            else:
-                raise ValueError(f'eval_set:{self.config.eval_set} must be float or callable or None')
-            if is_memory_enough(file_content_length):
-                logger.info(f'memory enough, load svmfile into memory')
-                print(train_svm_files)
-                X, y = load_svmlight_file(MultiStreamReader(map(file_path_handler, train_svm_files)), zero_based=True)
-                y = list(map(lambda x:list(map(int, list(f"{int(x):03}"))), y))
-                
-                #y = list(map(lambda x:int(str(int(x))[1]), y))
+                train_index, test_index = train_test_split(range(len(y)), test_size=self.config.eval_set, random_state=self.config.seed, stratify=y)
+                X, X_test, y, y_test = X[train_index], X[test_index], y[train_index], y[test_index]
                 self.train_Xy = xgb.DMatrix(X, y)
-                print(train_svm_files)
-                X, y = load_svmlight_file(MultiStreamReader(map(file_path_handler, test_svm_files)), zero_based=True)
-                y = list(map(lambda x:list(map(int, list(f"{int(x):03}"))), y))
-                
-                #y = list(map(lambda x:int(str(int(x))[1]), y))
-                self.test_Xy = xgb.DMatrix(X, y)
+                self.test_Xy = xgb.DMatrix(X_test, y_test)
+                if self.config.sample_weight is not None:
+                    self.train_Xy.set_weight(self.config.sample_weight[train_index])
+                self.eval_set = [(self.train_Xy, "train"),(self.test_Xy, "test")]
             else:
-                logger.info(f'memory not enough, load svmfile into externel memory')
-                self.train_Xy = xgb.DMatrix(XGBIterator(train_svm_files, file_path_handler, self.config.model_name))
-                self.test_Xy = xgb.DMatrix(XGBIterator(test_svm_files, file_path_handler, self.config.model_name))
-            if self.config.sample_weight is not None:
-                self.train_Xy.set_weight(self.config.sample_weight[train_index])
-            eval_set = [(self.train_Xy, "train"),(self.test_Xy, "test")]
-        else:
-            if is_memory_enough(file_content_length):
-                logger.info(f'memory enough, load svmfile into memory')
-                self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, svm_file_paths)), zero_based=True))
-            else:
-                logger.info(f'memory not enough, load svmfile into externel memory')
-                self.train_Xy = xgb.DMatrix(XGBIterator(svm_file_paths, file_path_handler, self.config.model_name))
-            eval_set = self.config.eval_set
-        logger.info(f'fit args:{config_args}')
-        self._model = xgb.train(params=config_args, dtrain=self.train_Xy, num_boost_round=self.config.n_estimators,
-            evals=eval_set, obj=self.config.obj, early_stopping_rounds = self.config.early_stopping_rounds,
-            evals_result=self.evals_result, verbose_eval=self.config.verbose
+                self.train_Xy = xgb.DMatrix(X, y)
+                if self.config.sample_weight is not None:
+                    self.train_Xy.set_weight(self.config.sample_weight)
+                self.eval_set = [(xgb.DMatrix(*it), f'test_{idx}') for idx, it in enumerate(self.config.eval_set)] + [(self.train_Xy, "train")]
+        self._model = xgb.train(params=self.config_args, dtrain=self.train_Xy, num_boost_round=self.config.n_estimators,
+            evals=self.eval_set, obj=self.config.obj, early_stopping_rounds = self.config.early_stopping_rounds,
+            evals_result=self.evals_result, verbose_eval=self.config.verbose, xgb_model=None
         )
-        logger.info(f'evals_result:\n{self.evals_result}')
+
+    def step_fit(self, train_Xy, test_Xy, num_boost_round=1, **kwargs):
+        if not self.initd:
+            self.init()
+        self._model = xgb.train(params=self.config_args, dtrain=train_Xy, num_boost_round=num_boost_round,
+            evals=[(test_Xy, 'test'), (train_Xy, "train")], obj=self.config.obj, early_stopping_rounds = self.config.early_stopping_rounds,
+            evals_result=self.evals_result, verbose_eval=self.config.verbose, xgb_model=self._model if hasattr(self, '_model') else None
+        )
 
     def save_model(self, file_name=None):
         self._save_dir.mkdir(parents=True, exist_ok=True)
@@ -273,22 +269,17 @@ class Model():
     def save_dir(self, value):
         self._save_dir = value
 
-    def save(self):
+    def save(self, test_Xy):
         self.save_model()
         self.save_train_graph()
-        self.save_test_graph()
+        self.save_test_graph(test_Xy)
 
-    def save_test_graph(self, pos_label=1):
+    def save_test_graph(self, test_Xy, pos_label=1):
         graph_save_dir = self._save_dir.joinpath('graph')
         graph_save_dir.mkdir(parents=True, exist_ok=True)
         data_Xy = None
         title = 'oot score distribute'
-        if self.oot_Xy is not None:
-            data_Xy, title = self.oot_Xy, 'oot score distribute'
-        elif self.test_Xy is not None:
-            data_Xy, title = self.test_Xy, 'test score distribute'
-        else:
-            data_Xy, title = self.train_Xy, 'train score distribute'
+        data_Xy, title = test_Xy, 'oot score distribute'
         y_true = data_Xy.get_label()
         y_pred =self.predict_proba(data_Xy)[:, pos_label]
 

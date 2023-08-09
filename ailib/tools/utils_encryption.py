@@ -14,6 +14,7 @@ def path_to_base64(path):
     return data.decode()
 
 def to_base64(text):
+    text = str(text)
     if text.startswith("http") or text.startswith("ftp"):
         return url_to_base64(text)
     else:

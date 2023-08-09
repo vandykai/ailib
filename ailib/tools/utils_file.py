@@ -22,23 +22,28 @@ def read_lines(file_path, *args):
         lines = f.readlines()
     return lines
 
-def file_de_duplication_line(file_name):
+def file_de_duplication_line(file_path):
     all_line = []
-    with open(file_name) as f:
+    with open(file_path) as f:
         for line in f:
             line = line.strip()
             if line not in all_line:
                 all_line.append(line)
-    with open(file_name, "w") as f:
+    with open(file_path, "w") as f:
         for line in all_line:
             f.write(line+"\n")
 
-def save_to_file(json_list, file_name):
-    with open(file_name, "w") as f:
+def save_to_file(json_list, file_path):
+    with open(file_path, "w") as f:
         for item in json_list:
             if type(item) != str:
                 item = json.dumps(item, ensure_ascii=False)
             f.write(item+'\n')
+
+def load_json(file_path):
+    with open(file_path, "r") as f:
+        return json.load(f)
+
 
 def get_svmlight_dim(X_iter):
     h, w = 0, 0

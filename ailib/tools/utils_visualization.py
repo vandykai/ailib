@@ -267,12 +267,17 @@ def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **k
     return h
 
 
-def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, actual_pos_rate=None):
+def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, bins_type='frequence', actual_pos_rate=None):
     y_true = np.array(y_true, dtype=np.int8)
     y_pred = np.array(y_pred, dtype=np.float64)
     if len(y_pred.shape) == 2:
         y_pred = y_pred[:, pos_label]
-    score_bin = pd.cut(y_pred, bins)
+    if bins_type == "frequence":
+        score_bin = pd.qcut(y_pred, bins)
+    elif bins_type == "distince":
+        score_bin = pd.cut(y_pred, bins)
+    else:
+        raise ValueError("bins_type must in (frequence, distince)")
     result_df = pd.DataFrame({'score_bin':score_bin, 'y_true':y_true, 'y_pred':y_pred})
     result_df = result_df.groupby(['score_bin'], as_index=False, sort=False, dropna=True).agg(sample_num=('y_true', 'count'), 
                                                                       pos_sample_num=('y_true', lambda x:np.sum(x==pos_label)))

@@ -9,25 +9,35 @@ import pandas as pd
 from tqdm.auto import tqdm
 from ailib.tools.utils_file import maybe_download, temporary_path
 import tempfile
+import configparser
+import os
+
+
 
 logger = logging.getLogger('__ailib__')
 
-def get_oss_files(oss_dir, oss_config):
+
+def get_oss_bucket(oss_path):
+    config = configparser.ConfigParser()
+    config.read(f"{os.path.expanduser('~')}/.ossutilconfig")
+    bucket_name = oss_path.parts[1]
+    auth = oss2.Auth(config['Credentials']['accessKeyID'], config['Credentials']['accessKeySecret'])
+    endpoint = config["Bucket-Endpoint"][bucket_name] if "Bucket-Endpoint" in config else config['endpoint']
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    return bucket
+
+def get_oss_files(oss_dir):
     file_paths = []
     oss_dir = Path(oss_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
         file_paths.append(os.sep.join([oss_dir.parts[0], oss_dir.parts[1], obj.key]))
     return file_paths
 
-def get_oss_open_files(oss_dir, oss_config):
+def get_oss_open_files(oss_dir):
     file_paths = []
     oss_dir = Path(oss_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
         if obj.key.endswith('.gz'):
             file_paths.append(gzip.open(bucket.get_object(obj.key)))
@@ -35,17 +45,15 @@ def get_oss_open_files(oss_dir, oss_config):
             file_paths.append(bucket.get_object(obj.key))
     return file_paths
 
-def open_oss_file(oss_path, oss_config):
+def open_oss_file(oss_path):
     oss_path = Path(oss_path)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_path.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_path)
     if str(oss_path).endswith('.gz'):
         return gzip.open(bucket.get_object(os.sep.join(oss_path.parts[2:])))
     else:
         return bucket.get_object(os.sep.join(oss_path.parts[2:]))
 
-def oss_file_auto_reader(oss_path, oss_config, bucket, **kwargs):
+def oss_file_auto_reader(oss_path, bucket, **kwargs):
     oss_path = Path(oss_path)
     file_type_route = {
         'xlsx':('.xlsx', '.xlsx.gz'),
@@ -53,7 +61,7 @@ def oss_file_auto_reader(oss_path, oss_config, bucket, **kwargs):
     }
     suffix = ''.join(oss_path.suffixes)
     if suffix in file_type_route['xlsx']:
-        oss_path = {"oss_path":oss_path, "oss_file":get_oss_download_url(oss_path, oss_config)}
+        oss_path = {"oss_path":oss_path, "oss_file":get_oss_download_url(oss_path)}
         return read_oss_excel(oss_path, **kwargs)
     elif suffix in file_type_route['csv']:
         oss_path = {"oss_path":oss_path, "oss_file":bucket.get_object(os.sep.join(oss_path.parts[2:]))}
@@ -61,15 +69,13 @@ def oss_file_auto_reader(oss_path, oss_config, bucket, **kwargs):
     else:
         raise ValueError(f"{oss_path} file type not in {set(file_type_route.values())}")
 
-def load_oss_fold_data(oss_dir, oss_config, func=oss_file_auto_reader, **kwargs):
+def load_oss_fold_data(oss_dir, func=oss_file_auto_reader, **kwargs):
     datas = []
     oss_dir = Path(oss_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     oss_dir_head = Path(os.sep.join(oss_dir.parts[:2]))
     if func.__name__ == oss_file_auto_reader.__name__:
-        func = partial(func, oss_config=oss_config, bucket=bucket)
+        func = partial(func, bucket=bucket)
     for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
         if obj.size!=0:
             df = func(oss_dir_head/obj.key, **kwargs)
@@ -77,49 +83,41 @@ def load_oss_fold_data(oss_dir, oss_config, func=oss_file_auto_reader, **kwargs)
     return pd.concat(datas, ignore_index = True)
 
 
-def load_oss_fold_data_dict(oss_dir, oss_config, func=oss_file_auto_reader, **kwargs):
+def load_oss_fold_data_dict(oss_dir, func=oss_file_auto_reader, **kwargs):
     datas = {}
     oss_dir = Path(oss_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     oss_dir_head = Path(os.sep.join(oss_dir.parts[:2]))
     if func.__name__ == oss_file_auto_reader.__name__:
-        func = partial(func, oss_config=oss_config, bucket=bucket)
+        func = partial(func, bucket=bucket)
     for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
         if obj.size!=0:
             datas[obj.key] = func(oss_dir_head/obj.key, **kwargs)
     return datas
 
-def load_oss_files(oss_paths, oss_config, func=oss_file_auto_reader, **kwargs):
+def load_oss_files(oss_paths, func=oss_file_auto_reader, **kwargs):
     datas = []
     func_partial = func
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
     for oss_path in oss_paths:
         oss_path = Path(oss_path)
-        bucket_name = oss_path.parts[1]
-        bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+        bucket = get_oss_bucket(oss_path)
         if func.__name__ == oss_file_auto_reader.__name__:
-            func_partial = partial(func, oss_config=oss_config, bucket=bucket)
+            func_partial = partial(func, bucket=bucket)
         datas.append(func_partial(oss_path, **kwargs))
     return pd.concat(datas, ignore_index = True)
 
-def get_oss_files_size(oss_paths, oss_config):
+def get_oss_files_size(oss_paths):
     total_content_length = 0
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
     for oss_path in oss_paths:
         oss_path = Path(oss_path)
-        bucket_name = oss_path.parts[1]
-        bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+        bucket = get_oss_bucket(oss_path)
         meta_info = bucket.get_object_meta(os.sep.join(oss_path.parts[2:]))
         total_content_length += meta_info.content_length
     return total_content_length
 
-def upload_file_to_oss(local_file, oss_path, oss_config):
+def upload_file_to_oss(local_file, oss_path):
     oss_path = Path(oss_path)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_path.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_path)
     oss_path = os.sep.join(oss_path.parts[2:])
     retry = 3
     while retry > 0:
@@ -131,12 +129,10 @@ def upload_file_to_oss(local_file, oss_path, oss_config):
         logger.error(f'retry:{retry} upload:{local_file}')
     return 0
 
-def upload_fold_to_oss(local_dir, pattern, oss_dir, oss_config):
+def upload_fold_to_oss(local_dir, pattern, oss_dir):
     oss_dir = Path(oss_dir)
     local_dir = Path(local_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     for it in local_dir.rglob(pattern):
         if not it.is_file():
             continue
@@ -151,12 +147,10 @@ def upload_fold_to_oss(local_dir, pattern, oss_dir, oss_config):
             logger.error(f'retry:{retry} upload:{it}')
 
 
-def get_oss_upload_urls(oss_dir, files, oss_config, expires=48*60*60):
+def get_oss_upload_urls(oss_dir, files, expires=48*60*60):
     file_urls = {}
     oss_dir = Path(oss_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     headers = {}
     for file in files:
         file_path = oss_dir/file
@@ -164,12 +158,10 @@ def get_oss_upload_urls(oss_dir, files, oss_config, expires=48*60*60):
         file_urls[str(file_path)] = url
     return file_urls
 
-def get_oss_download_urls(oss_dir, oss_config, expires=48*60*60):
+def get_oss_download_urls(oss_dir, expires=48*60*60):
     file_urls = {}
     oss_dir = Path(oss_dir)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_dir.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_dir)
     oss_dir_head = Path(os.sep.join(oss_dir.parts[:2]))
     headers = {}
     #headers['Accept-Encoding'] = 'gzip'
@@ -180,12 +172,9 @@ def get_oss_download_urls(oss_dir, oss_config, expires=48*60*60):
         file_urls[str(oss_path)] = url
     return file_urls
 
-
-def get_oss_download_url(oss_path, oss_config, expires=48*60*60):
+def get_oss_download_url(oss_path, expires=48*60*60):
     oss_path = Path(oss_path)
-    auth = oss2.Auth(oss_config['accessKeyID'], oss_config['accessKeySecret'])
-    bucket_name = oss_path.parts[1]
-    bucket = oss2.Bucket(auth, oss_config['endpoint'], bucket_name)
+    bucket = get_oss_bucket(oss_path)
     headers = {}
     #headers['Accept-Encoding'] = 'gzip'
     params = dict()
