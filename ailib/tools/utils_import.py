@@ -44,12 +44,13 @@ from ailib.text.basic_data import ch_en_punctuation
 from ailib.tools.utils_adversarial import RandomPerturbation
 from ailib.tools.utils_check import check_df_label, clean_df_label, ismd5
 from ailib.tools.utils_dict import dict_shrink, get_df_dict
-from ailib.tools.utils_encryption import md5, sha256
+from ailib.tools.utils_encryption import md5, sha256, to_base64
 from ailib.tools.utils_feature import IV, get_sparse_feature_IV
 from ailib.tools.utils_file import (count_line, get_files, get_files_size,
                                     get_svmlight_dim, load_files,
                                     load_fold_data, load_fold_data_iter,
-                                    load_svmlight, save_svmlight, save_to_file)
+                                    load_json, load_svmlight, read_lines,
+                                    save_svmlight, save_to_file)
 from ailib.tools.utils_init import init_logger
 from ailib.tools.utils_ipython import display_html, display_img, display_pd
 from ailib.tools.utils_markdown import (df2markdown, label2markdown,
@@ -66,6 +67,7 @@ from ailib.tools.utils_persistence import (load_dill, load_model,
                                            save_dill, save_model,
                                            save_model2oss, save_pickle)
 from ailib.tools.utils_random import df_cut, df_cut_sample, seed_everything
+from ailib.tools.utils_report import save_classification_report
 from ailib.tools.utils_statistic import (get_distribute_dict,
                                          get_sample_rate_for_equal_dist,
                                          regularization)

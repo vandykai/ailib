@@ -82,7 +82,6 @@ def load_oss_fold_data(oss_dir, func=oss_file_auto_reader, **kwargs):
             datas.append(df)
     return pd.concat(datas, ignore_index = True)
 
-
 def load_oss_fold_data_dict(oss_dir, func=oss_file_auto_reader, **kwargs):
     datas = {}
     oss_dir = Path(oss_dir)

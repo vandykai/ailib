@@ -51,6 +51,8 @@ from ailib.tools.utils_visualization import (get_score_bin_statistic,
                                              plot_roc_curve,
                                              precision_recall_curve)
 
+from ailib.tools.utils_report import save_classification_report
+
 
 def is_memory_enough(file_size):
     mem = psutil.virtual_memory()
@@ -134,7 +136,6 @@ class Model():
     def reset(self):
         self.train_Xy = None
         self.test_Xy = None
-        self.oot_Xy = None
         self.evals_result = {}
 
     def fit(self, svm_file_paths, file_path_handler=None, **kwargs):
@@ -191,7 +192,7 @@ class Model():
             evals=eval_set, obj=self.config.obj, early_stopping_rounds = self.config.early_stopping_rounds,
             evals_result=self.evals_result, verbose_eval=self.config.verbose
         )
-        logger.info(f'evals_result:\n{self.evals_result}')
+        # logger.info(f'evals_result:\n{self.evals_result}')
 
     def save_model(self, file_name=None):
         self._save_dir.mkdir(parents=True, exist_ok=True)
@@ -269,45 +270,23 @@ class Model():
     def save(self):
         self.save_model()
         self.save_train_graph()
-        self.save_test_graph()
+        self.save_graph()
 
-    def save_test_graph(self, pos_label=1):
-        graph_save_dir = self._save_dir.joinpath('graph')
-        graph_save_dir.mkdir(parents=True, exist_ok=True)
-        data_Xy = None
-        title = 'oot score distribute'
-        if self.oot_Xy is not None:
-            data_Xy, title = self.oot_Xy, 'oot score distribute'
-        elif self.test_Xy is not None:
-            data_Xy, title = self.test_Xy, 'test score distribute'
-        else:
-            data_Xy, title = self.train_Xy, 'train score distribute'
-        y_true = data_Xy.get_label()
-        y_pred =self.predict_proba(data_Xy)[:, pos_label]
+    def save_graph(self, pos_label=1):
+        max_value, min_value = None, None
+        if self.train_Xy is not None:
+            y_true_train = self.train_Xy.get_label()
+            y_pred_train =self.predict_proba(self.train_Xy)[:, pos_label]
+            min_value = min(min_value, y_pred_train.min()) if min_value is not None else y_pred_train.min() 
+            max_value = max(max_value, y_pred_train.max()) if max_value is not None else y_pred_train.max()
 
-        _ = plt.hist(y_pred, bins=100)
-        plt.title(title)
-        plt.savefig(graph_save_dir.joinpath("score_distribute.png"))
-        plt.close()
+        if self.test_Xy is not None:
+            y_true_test = self.test_Xy.get_label()
+            y_pred_test =self.predict_proba(self.test_Xy)[:, pos_label]
+            min_value = min(min_value, y_pred_test.min()) if min_value is not None else y_pred_test.min() 
+            max_value = max(max_value, y_pred_test.max()) if max_value is not None else y_pred_test.max()
 
-        cm = confusion_matrix(y_true, y_pred.round())
-        fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=pos_label, drop_intermediate=False)
-        plot_roc_curve(fpr, tpr, thresholds)
-        plt.savefig(graph_save_dir.joinpath("roc_curve.png"))
-        plt.close()
-        plot_ks_curve(fpr, tpr, thresholds)
-        plt.savefig(graph_save_dir.joinpath("ks_curve.png"))
-        plt.close()
-        plot_fpr_tpr_curve(fpr, tpr, thresholds)
-        plt.savefig(graph_save_dir.joinpath("fpr_tpr_curve.png"))
-        plt.close()
-        average_precision = average_precision_score(y_true, y_pred)
-        precision, recall, _ = precision_recall_curve(y_true, y_pred)
-        plot_precision_recall_curve(precision, recall, average_precision)
-        plt.savefig(graph_save_dir.joinpath("precision_recall_curve.png"))
-        plt.close()
-        plot_confusion_matrix(cm, classes=[0,1])
-        plt.savefig(graph_save_dir.joinpath("confusion_matrix.png"))
-        plt.close()
-        score_bin_statistic_df = get_score_bin_statistic(y_true,y_pred)
-        score_bin_statistic_df.to_csv(self._save_dir.joinpath("score_bin_statistic_df.csv"), index=False)
+        if self.train_Xy is not None:
+            save_classification_report(self._save_dir.joinpath('train'), y_true_train, y_pred_train, pos_label, min_value, max_value)
+        if self.test_Xy is not None:
+            save_classification_report(self._save_dir.joinpath('test'), y_true_test, y_pred_test, pos_label, min_value, max_value)
