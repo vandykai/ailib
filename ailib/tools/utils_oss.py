@@ -22,7 +22,7 @@ def get_oss_bucket(oss_path):
     config.read(f"{os.path.expanduser('~')}/.ossutilconfig")
     bucket_name = oss_path.parts[1]
     auth = oss2.Auth(config['Credentials']['accessKeyID'], config['Credentials']['accessKeySecret'])
-    endpoint = config["Bucket-Endpoint"][bucket_name] if "Bucket-Endpoint" in config else config['endpoint']
+    endpoint = config["Bucket-Endpoint"][bucket_name] if ("Bucket-Endpoint" in config and bucket_name in config["Bucket-Endpoint"]) else config['endpoint']
     bucket = oss2.Bucket(auth, endpoint, bucket_name)
     return bucket
 

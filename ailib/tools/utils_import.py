@@ -6,7 +6,7 @@ import random
 import sys
 import time
 import typing
-from collections import Counter, defaultdict
+from collections import Counter, OrderedDict, defaultdict
 from functools import partial
 from pathlib import Path
 from random import choice
@@ -54,7 +54,7 @@ from ailib.tools.utils_file import (count_line, get_files, get_files_size,
 from ailib.tools.utils_init import init_logger
 from ailib.tools.utils_ipython import display_html, display_img, display_pd
 from ailib.tools.utils_markdown import (df2markdown, label2markdown,
-                                        list2markdown)
+                                        list2markdown, markdown2pdf)
 from ailib.tools.utils_name_parse import parse_activation
 from ailib.tools.utils_oss import (get_oss_download_url, get_oss_download_urls,
                                    get_oss_files, get_oss_files_size,
