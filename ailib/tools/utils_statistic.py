@@ -198,6 +198,6 @@ def get_sample_rate_for_equal_dist(mark_dist, sample_dist, max_sample_rate=None)
 def get_distribute_dict(x, bins = 10, min_value = 0, max_value = 1):
     step = (max_value-min_value)/bins
     max_value = max_value + step
-    dict_value = pd.cut(x, bins = np.arange(0, 1, step)).value_counts()
+    dict_value = pd.cut(x, bins = np.arange(min_value, max_value, step)).value_counts()
     dict_value = {str(k):v for k, v in dict_value.items()}
     return dict_value
