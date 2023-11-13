@@ -1,8 +1,0 @@
-[submodule "ailib/torchtext"]
-	path = ailib/torchtext
-	url = git@github.com:vandykai/torchtext.git
-[submodule "ailib/datasets"]
-	path = ailib/datasets
-	url = git@github.com:vandykai/datasets.git
-[submodule "torchtext"]
-	url = git@github.com:vandykai/torchtext.git
