@@ -1,7 +1,10 @@
 import torch
 import math
 from scipy.special import comb
-from torch._six import inf
+try:
+    from torch import inf
+except:
+    from torch._six import inf
 from typing import Union, Iterable
 import numpy as np
 import random
