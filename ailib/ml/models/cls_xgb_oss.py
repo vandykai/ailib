@@ -57,7 +57,7 @@ from ailib.tools.utils_report import save_classification_report
 def is_memory_enough(file_size):
     mem = psutil.virtual_memory()
     logger.info(f'memory available:{mem.available} file_size:{file_size}')
-    if mem.available > 2*file_size:
+    if mem.available > 5*file_size:
         return True
     return False
 

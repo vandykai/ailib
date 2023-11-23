@@ -312,15 +312,18 @@ def plot_time_distribute(df, date_key, label_key, pos_label=1, figsize='auto'):
     '''
     dict_value = df[date_key].value_counts().to_dict()
     if figsize=='auto':
-        figsize = (15, int(len(dict_value)/5))
+        figsize = (22, int(len(dict_value)/5))
         fig = plt.figure(figsize=figsize)
     elif figsize:
         fig = plt.figure(figsize=figsize)
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plot_dict_bar(dict_value, figsize=None, y_type='cumsum')
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     pos_df = df[df[label_key]==pos_label]
     plot_dict_bar(pos_df[date_key].value_counts().to_dict(), figsize=None, y_type='cumsum')
+    plt.subplot(1, 3, 3)
+    neg_df = df[df[label_key]==pos_label]
+    plot_dict_bar(neg_df[date_key].value_counts().to_dict(), figsize=None, y_type='cumsum')
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.5, hspace=None)
     return plt
 
