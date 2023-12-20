@@ -385,3 +385,5 @@ treelib >= 1.6.1
 # ailib/ailib/ml/models/cls_xgb.py: 20
 # ailib/ailib/tools/utils_import.py: 14
 xgboost >= 1.3.3
+
+seaborn >= 0.11.2
