@@ -22,7 +22,7 @@ setuptools.setup(
     install_requires=[
         "PyYAML >= 5.4.1",
         "beautifulsoup4 >= 4.10.0",
-        "dask >= 2021.6.2",
+        "dask >= 2021.3.0",
         "dill >= 0.3.4",
         "einops >= 0.3.2",
         "fastai >= 2.5.3",
