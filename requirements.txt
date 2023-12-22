@@ -386,4 +386,10 @@ treelib >= 1.6.1
 # ailib/ailib/tools/utils_import.py: 14
 xgboost >= 1.3.3
 
+prettytable >= 3.1.1
+oss2 >= 2.15.0
+pdfkit >= 1.0.0
+Markdown >= 3.4.4
+pyopenssl >= 22.0.0
+lightgbm >= 3.3.1
 seaborn >= 0.11.2

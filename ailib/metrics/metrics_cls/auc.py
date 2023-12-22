@@ -2,7 +2,7 @@
 import numpy as np
 from ailib.metrics.base_metric import ClassificationMetric
 from sklearn.metrics import roc_curve, auc
-from scipy.special import softmax, expit
+from scipy.special import softmax
 
 class AUC(ClassificationMetric):
     """AUC metric."""
