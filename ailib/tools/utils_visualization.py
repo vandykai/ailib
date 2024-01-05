@@ -274,12 +274,12 @@ def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, bi
         y_pred = y_pred[:, pos_label]
     if bins_type == "frequence":
         score_bin = pd.qcut(y_pred, bins)
-    elif bins_type == "distince":
+    elif bins_type == "distance":
         score_bin = pd.cut(y_pred, bins)
     else:
-        raise ValueError("bins_type must in (frequence, distince)")
+        raise ValueError("bins_type must in (frequence, distance)")
     result_df = pd.DataFrame({'score_bin':score_bin, 'y_true':y_true, 'y_pred':y_pred})
-    result_df = result_df.groupby(['score_bin'], as_index=False, sort=False, dropna=True).agg(sample_num=('y_true', 'count'), 
+    result_df = result_df.groupby(['score_bin'], as_index=False, sort=False, dropna=True, observed=False).agg(sample_num=('y_true', 'count'), 
                                                                       pos_sample_num=('y_true', lambda x:np.sum(x==pos_label)))
     
     if actual_pos_rate is not None:
