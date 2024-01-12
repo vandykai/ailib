@@ -80,5 +80,6 @@ from ailib.tools.utils_visualization import (get_score_bin_statistic,
                                              plot_dict_line,
                                              plot_time_distribute)
 from ailib.trainers import Trainer
+from ailib.tools.utils_math import sigmoid, anti_sigmoid
 
 logger = logging.getLogger('__ailib__')

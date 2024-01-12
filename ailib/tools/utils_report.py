@@ -44,5 +44,5 @@ def save_classification_report(save_path, y_true, y_pred, pos_label=1, y_pred_mi
     frequence_score_bin_statistic_df = get_score_bin_statistic(y_true,y_pred, bins_type='frequence')
     frequence_score_bin_statistic_df.to_csv(save_path.joinpath(f"frequence_score_bin_statistic_df.csv"), index=False)
 
-    distince_score_bin_statistic_df = get_score_bin_statistic(y_true,y_pred, bins_type='distince', bins=np.arange(y_pred_min,y_pred_max+1e-5, 0.1, ))
+    distince_score_bin_statistic_df = get_score_bin_statistic(y_true,y_pred, bins_type='distance', bins=np.arange(y_pred_min,y_pred_max+1e-5, 0.1, ))
     distince_score_bin_statistic_df.to_csv(save_path.joinpath(f"distince_score_bin_statistic_df.csv"), index=False)
