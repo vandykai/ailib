@@ -37,7 +37,7 @@ def get_oss_files(oss_dir):
     oss_dir = Path(oss_dir)
     bucket = get_oss_bucket(oss_dir)
     for obj in oss2.ObjectIterator(bucket, prefix=get_oss_path(oss_dir)):
-        file_paths.append(os.sep.join([oss_dir.parts[0], oss_dir.parts[1], obj.key]))
+        file_paths.append(os.sep.join(['oss:/', oss_dir.parts[1], obj.key]))
     return file_paths
 
 def get_oss_open_files(oss_dir):
