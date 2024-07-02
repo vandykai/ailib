@@ -22,15 +22,21 @@ def get_oss_bucket(oss_path):
     config.read(f"{os.path.expanduser('~')}/.ossutilconfig")
     bucket_name = oss_path.parts[1]
     auth = oss2.Auth(config['Credentials']['accessKeyID'], config['Credentials']['accessKeySecret'])
-    endpoint = config["Bucket-Endpoint"][bucket_name] if ("Bucket-Endpoint" in config and bucket_name in config["Bucket-Endpoint"]) else config['endpoint']
+    endpoint = config["Bucket-Endpoint"][bucket_name] if ("Bucket-Endpoint" in config and bucket_name in config["Bucket-Endpoint"]) else config['Credentials']['endpoint']
     bucket = oss2.Bucket(auth, endpoint, bucket_name)
     return bucket
+
+def get_oss_path(oss_dir):
+    path = os.sep.join(oss_dir.parts[2:])
+    if not path.endswith(os.sep):
+        path = path + os.sep
+    return path
 
 def get_oss_files(oss_dir):
     file_paths = []
     oss_dir = Path(oss_dir)
     bucket = get_oss_bucket(oss_dir)
-    for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
+    for obj in oss2.ObjectIterator(bucket, prefix=get_oss_path(oss_dir)):
         file_paths.append(os.sep.join([oss_dir.parts[0], oss_dir.parts[1], obj.key]))
     return file_paths
 
@@ -38,7 +44,7 @@ def get_oss_open_files(oss_dir):
     file_paths = []
     oss_dir = Path(oss_dir)
     bucket = get_oss_bucket(oss_dir)
-    for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
+    for obj in oss2.ObjectIterator(bucket, prefix=get_oss_path(oss_dir)):
         if obj.key.endswith('.gz'):
             file_paths.append(gzip.open(bucket.get_object(obj.key)))
         else:
@@ -76,7 +82,7 @@ def load_oss_fold_data(oss_dir, func=oss_file_auto_reader, **kwargs):
     oss_dir_head = Path(os.sep.join(oss_dir.parts[:2]))
     if func.__name__ == oss_file_auto_reader.__name__:
         func = partial(func, bucket=bucket)
-    for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
+    for obj in oss2.ObjectIterator(bucket, prefix=get_oss_path(oss_dir)):
         if obj.size!=0:
             df = func(oss_dir_head/obj.key, **kwargs)
             datas.append(df)
@@ -89,7 +95,7 @@ def load_oss_fold_data_dict(oss_dir, func=oss_file_auto_reader, **kwargs):
     oss_dir_head = Path(os.sep.join(oss_dir.parts[:2]))
     if func.__name__ == oss_file_auto_reader.__name__:
         func = partial(func, bucket=bucket)
-    for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
+    for obj in oss2.ObjectIterator(bucket, prefix=get_oss_path(oss_dir)):
         if obj.size!=0:
             datas[obj.key] = func(oss_dir_head/obj.key, **kwargs)
     return datas
@@ -165,7 +171,7 @@ def get_oss_download_urls(oss_dir, expires=48*60*60):
     headers = {}
     #headers['Accept-Encoding'] = 'gzip'
     params = dict()
-    for obj in oss2.ObjectIterator(bucket, prefix=os.sep.join(oss_dir.parts[2:])):
+    for obj in oss2.ObjectIterator(bucket, prefix=get_oss_path(oss_dir)):
         url = bucket.sign_url('GET', obj.key, expires, slash_safe=True, headers=headers, params=params)
         oss_path = oss_dir_head/Path(obj.key)
         file_urls[str(oss_path)] = url
@@ -195,4 +201,3 @@ def read_oss_excel(oss_path, **kwargs):
                 return pd.read_excel(file, **kwargs)
         else:
             return pd.read_excel(filepath, **kwargs)
-    

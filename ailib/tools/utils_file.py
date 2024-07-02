@@ -170,7 +170,7 @@ def df_dict_to_excel(df_dict, file_name):
         value.to_excel(writer, key, index=False)
     writer.save()
 
-def load_fold_data(fold, pattern='*', func=pd.read_csv, recursive=False, debug=False, **kwargs):
+def load_fold_data(fold, pattern='*', func=pd.read_csv, recursive=False, add_fold=False, debug=False, **kwargs):
     datas = []
     if recursive:
         file_paths = Path(fold).rglob(pattern)
@@ -180,7 +180,10 @@ def load_fold_data(fold, pattern='*', func=pd.read_csv, recursive=False, debug=F
         if debug:
             print(file_path)
         try:
-            datas.append(func(file_path, **kwargs))
+            df = func(file_path, **kwargs)
+            if add_fold and 'path' not in df.columns:
+                df['path'] = str(file_path)
+            datas.append(df)
         except pd.errors.EmptyDataError as e:
             logger.error(f"{file_path} is empty")
     return pd.concat(datas, ignore_index = True)
@@ -193,16 +196,19 @@ def get_files(fold, pattern='*', recursive=False):
         file_paths = Path(fold).glob(pattern)
     return list(file_paths)
 
-def load_files(file_paths, func=pd.read_csv, **kwargs):
+def load_files(file_paths, func=pd.read_csv, add_fold=False, **kwargs):
     datas = []
     for file_path in file_paths:
         try:
-            datas.append(func(file_path, **kwargs))
+            df = func(file_path, **kwargs)
+            if add_fold and 'path' not in df.columns:
+                df['path'] = str(file_path)
+            datas.append(df)
         except pd.errors.EmptyDataError as e:
             logger.error(f"{file_path} is empty")
     return pd.concat(datas, ignore_index = True)
 
-def load_fold_data_iter(fold, pattern='*', func=pd.read_csv, recursive=False, split=None, debug=False, **kwargs):
+def load_fold_data_iter(fold, pattern='*', func=pd.read_csv, recursive=False, add_fold=False, split=None, debug=False, **kwargs):
     file_paths = []
     if recursive:
         file_paths = Path(fold).rglob(pattern)
@@ -218,7 +224,10 @@ def load_fold_data_iter(fold, pattern='*', func=pd.read_csv, recursive=False, sp
         datas = []
         for file_path in file_paths[i:i+step]:
             try:
-                datas.append(func(file_path, **kwargs))
+                df = func(file_path, **kwargs)
+                if add_fold and 'path' not in df.columns:
+                    df['path'] = str(file_path)
+                datas.append(df)
             except pd.errors.EmptyDataError as e:
                 logger.error(f"{file_path} is empty")
         yield pd.concat(datas, ignore_index = True)

@@ -52,6 +52,7 @@ from ailib.tools.utils_visualization import (get_score_bin_statistic,
                                              precision_recall_curve)
 
 from ailib.tools.utils_report import save_classification_report
+import xgboost
 
 
 def is_memory_enough(file_size):
@@ -70,7 +71,7 @@ class ModelParam(BaseModelParam):
         self['model_name'] = "XGBoost"
         self['learning_rate'] = 5e-2
         self.add(Param(name='tree_method', value='auto', desc="tree method"))
-        self.add(Param(name='n_estimators', value=300, desc="nnumber of estimators"))
+        self.add(Param(name='n_estimators', value=1000, desc="nnumber of estimators"))
         self.add(Param(name='max_depth', value=3, desc="max depth"))
         self.add(Param(name='min_child_weight', value=4, desc="min child weight"))
         self.add(Param(name='gamma', value=0.6, desc="gamma"))
@@ -98,7 +99,7 @@ class XGBIterator(xgb.DataIter):
         self._it = 0
         self._pbar = tqdm(total=len(svm_file_paths))
         self._pbar.set_description(model_name)
-        super().__init__(cache_prefix=os.path.join(".", f"cache-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')}"))
+        super().__init__(cache_prefix=os.path.join("/data5/wandikai/", f"cache-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')}"))
 
     def next(self, input_data: Callable):
         if self._it == len(self._file_paths):
@@ -206,6 +207,8 @@ class Model():
     def load_model(self, file_path=None):
         if file_path is None:
             file_path = self._save_dir.joinpath("model.pt")
+        if not hasattr(self, '_model'):
+            self._model = xgboost.Booster()
         self._model.load_model(file_path)
 
     def predict(self, X):

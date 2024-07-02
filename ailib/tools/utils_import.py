@@ -62,7 +62,7 @@ from ailib.tools.utils_oss import (get_oss_download_url, get_oss_download_urls,
                                    get_oss_open_files, get_oss_upload_urls,
                                    load_oss_files, load_oss_fold_data,
                                    load_oss_fold_data_dict, open_oss_file,
-                                   upload_file_to_oss, upload_fold_to_oss)
+                                   upload_file_to_oss, upload_fold_to_oss, get_oss_bucket)
 from ailib.tools.utils_persistence import (load_dill, load_model,
                                            load_model2oss, load_pickle,
                                            save_dill, save_model,
