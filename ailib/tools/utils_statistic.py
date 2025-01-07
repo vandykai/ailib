@@ -55,7 +55,7 @@ def wilson_smooth(click_num, impression_num, z=1.96):
     if impression_num == 0:
         return 0
     else:
-        return _confidence(click_num, impression_num, z)
+        return _confidence(click_num, impression_num, z)[0]
 
 def grad_norm(parameters: _tensor_or_tensors, norm_type: float = 2.0) -> torch.Tensor:
     r"""Caculate gradient norm of an iterable of parameters.

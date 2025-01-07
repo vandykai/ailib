@@ -45,7 +45,7 @@ from ailib.text.basic_data import ch_en_punctuation
 from ailib.tools.utils_adversarial import RandomPerturbation
 from ailib.tools.utils_check import check_df_label, clean_df_label, ismd5
 from ailib.tools.utils_dict import dict_shrink, get_df_dict
-from ailib.tools.utils_encryption import md5, sha256, to_base64
+from ailib.tools.utils_encryption import md5, sha256, to_base64, from_base64
 from ailib.tools.utils_feature import IV, get_sparse_feature_IV
 from ailib.tools.utils_file import (count_line, get_files, get_files_size,
                                     get_svmlight_dim, load_files,

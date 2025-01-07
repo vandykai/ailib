@@ -312,7 +312,7 @@ def plot_time_distribute(df, date_key, label_key, pos_label=1, figsize='auto'):
     '''
     dict_value = df[date_key].value_counts().to_dict()
     if figsize=='auto':
-        figsize = (22, int(len(dict_value)/5))
+        figsize = (22, max(int(len(dict_value)/5), 5))
         fig = plt.figure(figsize=figsize)
     elif figsize:
         fig = plt.figure(figsize=figsize)

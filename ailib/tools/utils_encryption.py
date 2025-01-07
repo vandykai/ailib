@@ -20,6 +20,11 @@ def to_base64(text):
     else:
         return path_to_base64(text)
 
+def from_base64(text):
+    if text:
+        text = base64.b64decode(text).decode()
+    return text
+
 def md5(text):
     return hashlib.md5(str(text).encode('utf-8')).hexdigest()
 
