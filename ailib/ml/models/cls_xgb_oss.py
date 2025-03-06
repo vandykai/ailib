@@ -165,21 +165,40 @@ class Model():
             if isinstance(self.config.eval_set, float):
                 train_index, test_index = train_test_split(range(len(svm_file_paths)), test_size=self.config.eval_set, random_state=self.config.seed)
                 train_svm_files, test_svm_files = svm_file_paths[train_index], svm_file_paths[test_index]
+                oot_svm_files = []
             elif callable(self.config.eval_set):
-                train_svm_files, test_svm_files = self.config.eval_set(svm_file_paths)
+                train_svm_files, test_svm_files, oot_svm_files = self.config.eval_set(svm_file_paths)
             else:
                 raise ValueError(f'eval_set:{self.config.eval_set} must be float or callable or None')
             if is_memory_enough(file_content_length):
                 logger.info(f'memory enough, load svmfile into memory')
                 self.train_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, train_svm_files)), zero_based=True))
-                self.test_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, test_svm_files)), zero_based=True))
+                if len(test_svm_files) != 0:
+                    self.test_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, test_svm_files)), zero_based=True))
+                else:
+                    self.test_Xy = None
+                if len(oot_svm_files) != 0:
+                    self.oot_Xy = xgb.DMatrix(*load_svmlight_file(MultiStreamReader(map(file_path_handler, oot_svm_files)), zero_based=True))
+                else:
+                    self.oot_Xy = None
             else:
                 logger.info(f'memory not enough, load svmfile into externel memory')
                 self.train_Xy = xgb.DMatrix(XGBIterator(train_svm_files, file_path_handler, self.config.model_name))
-                self.test_Xy = xgb.DMatrix(XGBIterator(test_svm_files, file_path_handler, self.config.model_name))
+                if len(test_svm_files) != 0:
+                    self.test_Xy = xgb.DMatrix(XGBIterator(test_svm_files, file_path_handler, self.config.model_name))
+                else:
+                    self.test_Xy = None
+                if len(oot_svm_files) != 0:
+                    self.oot_Xy = xgb.DMatrix(XGBIterator(oot_svm_files, file_path_handler, self.config.model_name))
+                else:
+                    self.oot_Xy = None
             if self.config.sample_weight is not None:
                 self.train_Xy.set_weight(self.config.sample_weight[train_index])
-            eval_set = [(self.train_Xy, "train"),(self.test_Xy, "test")]
+            eval_set = [(self.train_Xy, "train")]
+            if self.test_Xy is not None:
+                eval_set.append((self.test_Xy, "test"))
+            if self.oot_Xy is not None:
+                eval_set.append((self.oot_Xy, "oot"))
         else:
             if is_memory_enough(file_content_length):
                 logger.info(f'memory enough, load svmfile into memory')
@@ -280,16 +299,24 @@ class Model():
         if self.train_Xy is not None:
             y_true_train = self.train_Xy.get_label()
             y_pred_train =self.predict_proba(self.train_Xy)[:, pos_label]
-            min_value = min(min_value, y_pred_train.min()) if min_value is not None else y_pred_train.min() 
+            min_value = min(min_value, y_pred_train.min()) if min_value is not None else y_pred_train.min()
             max_value = max(max_value, y_pred_train.max()) if max_value is not None else y_pred_train.max()
 
         if self.test_Xy is not None:
             y_true_test = self.test_Xy.get_label()
             y_pred_test =self.predict_proba(self.test_Xy)[:, pos_label]
-            min_value = min(min_value, y_pred_test.min()) if min_value is not None else y_pred_test.min() 
+            min_value = min(min_value, y_pred_test.min()) if min_value is not None else y_pred_test.min()
             max_value = max(max_value, y_pred_test.max()) if max_value is not None else y_pred_test.max()
+        
+        if self.oot_Xy is not None:
+            y_true_oot = self.oot_Xy.get_label()
+            y_pred_oot =self.predict_proba(self.oot_Xy)[:, pos_label]
+            min_value = min(min_value, y_pred_oot.min()) if min_value is not None else y_pred_oot.min() 
+            max_value = max(max_value, y_pred_oot.max()) if max_value is not None else y_pred_oot.max()
 
         if self.train_Xy is not None:
             save_classification_report(self._save_dir.joinpath('train'), y_true_train, y_pred_train, pos_label, min_value, max_value)
         if self.test_Xy is not None:
             save_classification_report(self._save_dir.joinpath('test'), y_true_test, y_pred_test, pos_label, min_value, max_value)
+        if self.oot_Xy is not None:
+            save_classification_report(self._save_dir.joinpath('oot'), y_true_oot, y_pred_oot, pos_label, min_value, max_value)
