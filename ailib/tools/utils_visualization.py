@@ -1,12 +1,14 @@
+from collections import OrderedDict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from collections import OrderedDict
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from matplotlib.pyplot import MultipleLocator
-from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score, confusion_matrix
+from sklearn.metrics import (auc, average_precision_score, confusion_matrix,
+                             precision_recall_curve, roc_curve)
 
 
 def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix'):
@@ -210,12 +212,8 @@ def plot_dict_bars(dict_list, y_types='percent', titles='', figsize='auto', reve
         try:
             key = str(x[0])
             split_pos = len(key)
-            if key.count('-') == 3: # '-a--b'
-                split_pos = key.index('-', key.index('-')+1)
-            elif key.count('-') == 2: # '-a-b' 'a--b'
-                split_pos = key.index('-', 1)
-            elif key.count('-') == 1: # 'a-b'
-                split_pos = key.index('-')
+            if key.count('_') == 1: # '-a_b' 'a_-b'
+                split_pos = key.index('_', 1)
             return float(key[:split_pos])
         except:
             return x

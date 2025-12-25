@@ -1,7 +1,10 @@
 import typing
 import numpy as np
 
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 from ailib.param import ParamTable
 from ailib.metrics.base_metric import BaseMetric
 from ailib.models.base_model import BaseModel
