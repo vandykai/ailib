@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 
-class Config():
+class ModelConfig():
     """配置参数"""
     def __init__(self):
         self.model_name = "HAN"
@@ -19,7 +19,7 @@ class Config():
         self.num_bottleneck_hidden = 512
         self.dynamic_pool_length = 32
 
-class Model(BaseModule):
+class Model(BaseModel):
 
     def __init__(self, config):
         super().__init__()

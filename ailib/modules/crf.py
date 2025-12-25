@@ -71,6 +71,7 @@ class CRF(nn.Module):
         start = best_path.pop()
         assert start == self.START_TAG_ID
         best_path.reverse()
+        #backscores = [item.detach().cpu().numpy().tolist() for item in backscores]
         return best_scores, best_path
 
     def _forward_alg(self, feats, lengths):
@@ -119,10 +120,10 @@ class CRF(nn.Module):
         tags = []
         tags_confidences = []
         for feats, length in zip(features, input_lens):
-            confidences, tag_seq = self._viterbi_decode(feats[:length])
+            confidence, tag_seq = self._viterbi_decode(feats[:length])
             tags.append(tag_seq)
-            tags_confidences.append(confidences)
-        return tags, confidences
+            tags_confidences.append(confidence)
+        return tags, tags_confidences
 
     def calculate_loss(self, features, lengths, tags):
         forward_score = self._forward_alg(features, lengths)

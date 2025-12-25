@@ -13,5 +13,5 @@
         "            worksheet.write(index+1,1, label = str(name_dict[name]))",
         "workbook.save('\u5c0f\u5b66\u521d\u4e2d\u76ee\u5f55.xls')"
     ],
-    "description": "use of xlwt"
+    "description": "usage of xlwt"
 }

@@ -86,11 +86,11 @@ class CustomDecayLR(object):
         >>>         optimizer.step()
         >>>     validate(...)
     '''
-    def __init__(self,optimizer,lr):
+    def __init__(self, optimizer, lr):
         self.optimizer = optimizer
         self.lr = lr
 
-    def epoch_step(self,epoch):
+    def epoch_step(self, metrics, epoch=None):
         lr = self.lr
         if epoch > 12:
             lr = lr / 1000
@@ -116,19 +116,19 @@ class BertLR(object):
         >>>         scheduler.batch_step()
         >>>     validate(...)
     '''
-    def __init__(self,optimizer,learning_rate,t_total,warmup):
+    def __init__(self, optimizer, learning_rate, t_total, warmup):
         self.learning_rate = learning_rate
         self.optimizer = optimizer
         self.t_total = t_total
         self.warmup = warmup
 
     # 线性预热方式
-    def warmup_linear(self,x, warmup=0.002):
+    def warmup_linear(self, x, warmup=0.002):
         if x < warmup:
             return x / warmup
         return 1.0 - x
 
-    def batch_step(self,training_step):
+    def batch_step(self, metrics, training_step=None):
         lr_this_step = self.learning_rate * self.warmup_linear(training_step / self.t_total,self.warmup)
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = lr_this_step
@@ -150,7 +150,7 @@ class CyclicLR(object):
     '''
     def __init__(self, optimizer, base_lr=1e-3, max_lr=6e-3,
                  step_size=2000, mode='triangular', gamma=1.,
-                 scale_fn=None, scale_mode='cycle', last_batch_iteration=-1):
+                 scale_fn=None, scale_mode='cycle', last_training_step=-1):
 
         if not isinstance(optimizer, Optimizer):
             raise TypeError('{} is not an Optimizer'.format(
@@ -197,8 +197,8 @@ class CyclicLR(object):
             self.scale_fn = scale_fn
             self.scale_mode = scale_mode
 
-        self.batch_step(last_batch_iteration + 1)
-        self.last_batch_iteration = last_batch_iteration
+        self.batch_step(None, last_training_step + 1)
+        self.last_training_step = last_training_step
 
     def _triangular_scale_fn(self, x):
         return 1.
@@ -211,8 +211,8 @@ class CyclicLR(object):
 
     def get_lr(self):
         step_size = float(self.step_size)
-        cycle = np.floor(1 + self.last_batch_iteration / (2 * step_size))
-        x = np.abs(self.last_batch_iteration / step_size - 2 * cycle + 1)
+        cycle = np.floor(1 + self.last_training_step / (2 * step_size))
+        x = np.abs(self.last_training_step / step_size - 2 * cycle + 1)
 
         lrs = []
         param_lrs = zip(self.optimizer.param_groups, self.base_lrs, self.max_lrs)
@@ -221,14 +221,14 @@ class CyclicLR(object):
             if self.scale_mode == 'cycle':
                 lr = base_lr + base_height * self.scale_fn(cycle)
             else:
-                lr = base_lr + base_height * self.scale_fn(self.last_batch_iteration)
+                lr = base_lr + base_height * self.scale_fn(self.last_training_step)
             lrs.append(lr)
         return lrs
 
-    def batch_step(self, batch_iteration=None):
-        if batch_iteration is None:
-            batch_iteration = self.last_batch_iteration + 1
-        self.last_batch_iteration = batch_iteration
+    def batch_step(self, metrics, training_step=None):
+        if training_step is None:
+            training_step = self.last_training_step + 1
+        self.last_training_step = training_step
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
             param_group['lr'] = lr
 
@@ -306,7 +306,7 @@ class ReduceLROnPlateau(object):
     def reset(self):
         self._reset()
 
-    def epoch_step(self, metrics, epoch):
+    def epoch_step(self, metrics, epoch=None):
         current = metrics
         if current is None:
             warnings.warn('Learning Rate Plateau Reducing requires metrics available!', RuntimeWarning)
@@ -356,7 +356,7 @@ class ReduceLRWDOnPlateau(ReduceLROnPlateau):
         >>>     # Note that step should be called after validate()
         >>>     scheduler.epoch_step(val_loss)
     """
-    def epoch_step(self, metrics, epoch):
+    def epoch_step(self, metrics, epoch=None):
         current = metrics
         if current is None:
             warnings.warn('Learning Rate Plateau Reducing requires metrics available!', RuntimeWarning)
@@ -489,7 +489,7 @@ class CosineLRWithRestarts(object):
         self.iteration = 0
         self.batch_increments = list(np.linspace(0, 1, batches_in_epoch))
 
-    def batch_step(self):
+    def batch_step(self, metrics, training_step=None):
         self.last_epoch += 1
         self.t_epoch += 1
         self._set_batch_increment()
@@ -519,26 +519,26 @@ class NoamLR(object):
         >>>         optimizer.zero_grad()
         >>>         loss.backward()
         >>>         optimizer.step()
-        >>>         scheduler.batch_step(global_step)
+        >>>         scheduler.batch_step(None, global_step)
         >>>     validate(...)
     '''
-    def __init__(self,d_model,factor,warm_up,optimizer):
+    def __init__(self, d_model, factor, warm_up, optimizer):
         self.optimizer = optimizer
         self.warm_up = warm_up
         self.factor = factor
         self.d_model = d_model
         self._lr = 0
 
-    def get_lr(self,step):
-        lr = self.factor * (self.d_model ** (-0.5) * min(step ** (-0.5),step * self.warm_up ** (-1.5)))
+    def get_lr(self, training_step):
+        lr = self.factor * (self.d_model ** (-0.5) * min(training_step ** (-0.5),training_step * self.warm_up ** (-1.5)))
         return lr
 
-    def batch_step(self,step):
+    def batch_step(self, metrics, training_step=None):
         '''
         update parameters and rate
         :return:
         '''
-        lr = self.get_lr(step)
+        lr = self.get_lr(training_step)
         for p in self.optimizer.param_groups:
             p['lr'] = lr
         self._lr = lr

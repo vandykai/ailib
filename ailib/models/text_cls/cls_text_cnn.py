@@ -1,11 +1,12 @@
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
-from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
-from torch import nn, optim, as_tensor
-from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorDataset
+from torch import nn, optim
 from torch.nn.utils import weight_norm, spectral_norm
+from ailib.models.base_model_param import BaseModelParam
+from ailib.param.param import Param
+from ailib.param import hyper_spaces
 
-class Config(object):
+class ModelConfig(object):
 
     """配置参数"""
     def __init__(self):
@@ -21,32 +22,56 @@ class Config(object):
             if self.embedding_pretrained is not None else 300           # 字向量维度
         self.filter_sizes = (2, 3, 4)                                   # 卷积核尺寸
         self.num_filters = 256                                          # 卷积核数量(channels数)
+        self.task = None
 
-class Model(BaseModule): 
+class ModelParam(BaseModelParam):
+
+    def __init__(self, with_embedding=True, with_multi_layer_perceptron=False):
+        super().__init__(with_embedding, with_multi_layer_perceptron)
+        self['model_name'] = "TextCNN"
+        self['learning_rate'] = 1e-3
+        self.add(Param(name='filter_sizes', value=(2, 3, 4),
+                         desc="卷积核尺寸."))
+        self.add(Param(
+            name='num_filters', value=256,
+            hyper_space=hyper_spaces.quniform(
+                low=128, high=512, q=32),
+            desc="卷积核数量(channels数)"))
+        self.add(Param(
+            name='dropout_rate', value=0.0,
+            hyper_space=hyper_spaces.quniform(
+                low=0.0, high=0.8, q=0.01),
+            desc="The dropout rate."
+        ))
+
+class Model(BaseModel): 
     '''
     Convolutional Neural Networks for Sentence Classification
     model input need to feed with fix length
     '''
     def __init__(self, config):
         super().__init__()
-        if config.embedding_pretrained is not None:
-            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
-        else:
-            self.embedding = nn.Embedding(config.n_vocab, config.embed_size, padding_idx=config.padding_idx)
+        self.config = config
+        self.embedding = self._make_default_embedding_layer()
         self.convs = nn.ModuleList(
-            [nn.Conv2d(1, config.num_filters, (k, config.embed_size)) for k in config.filter_sizes])
-        self.dropout = nn.Dropout(config.dropout)
-        self.fc = nn.Linear(config.num_filters * len(config.filter_sizes), config.n_classes)
+            [nn.Conv2d(1, self.config.num_filters, (k, self.config.embedding_output_dim)) for k in self.config.filter_sizes])
+        self.dropout = nn.Dropout(self.config.dropout_rate)
+        self.out = self._make_output_layer(self.config.num_filters * len(self.config.filter_sizes))
 
     def forward(self, inputs):
-        inputs = self.embedding(inputs).unsqueeze(1) # (B,1,T,D)
-        inputs = [F.relu(conv(inputs)).squeeze(3) for conv in self.convs] #[(N,Co,W), ...]*len(Ks)
-        inputs = [F.max_pool1d(x, x.size(2)).squeeze(2) for x in inputs] #[(N,Co), ...]*len(Ks)
+        input_ids = inputs["text"]
+        # input_ids [N, L]
+        # [N, 1, H, W] H=>L,W=>embed_dim
+        input_ids = self.embedding(input_ids).unsqueeze(1)
+        # [N, C, H_out]*len(Ks)
+        input_ids = [F.relu(conv(input_ids)).squeeze(3) for conv in self.convs]
+        # [N, C]*len(Ks)
+        input_ids = [F.max_pool1d(x, x.size(2)).squeeze(2) for x in input_ids]
 
-        concated = torch.cat(inputs, 1)
+        concated = torch.cat(input_ids, 1)
 
         concated = self.dropout(concated) # (N,len(Ks)*Co)
-        out = self.fc(concated)
+        out = self.out(concated)
         return out
 
     def init_weights(self, pretrained_word_vectors=None, is_static=False):

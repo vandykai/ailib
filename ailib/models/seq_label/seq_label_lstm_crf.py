@@ -1,4 +1,4 @@
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
 from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
 from torch import nn, optim, as_tensor
@@ -6,24 +6,41 @@ from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorD
 from torch.nn.utils import weight_norm, spectral_norm
 from torch.nn import LayerNorm
 from ailib.modules.crf import CRF
+from ailib.models.base_model_param import BaseModelParam
+from ailib.param.param import Param
 
-class Config(object):
+class ModelParam(BaseModelParam):
 
-    """配置参数"""
-    def __init__(self):
-        self.model_name = 'LSTM-CRF'
-        self.embedding_pretrained = None                                # 预训练词向量
-        self.dropout = 0.1                                              # 随机失活
-        self.n_vocab = 0                                                # 词表大小，在运行时赋值
-        self.n_tag = 0                                                  # tag表大小，在运行时赋值, 不包括START_TAG,STOP_TAG,PAD_TAG
-        self.padding_idx = 0                                            # embedding层padding_idx
-        self.learning_rate = 1e-3                                       # 学习率
-        self.embed_size = self.embedding_pretrained.size(1)\
-            if self.embedding_pretrained is not None else 300           # 字向量维度
-        self.hidden_size = 256                                          # lstm隐藏层
-        self.num_layers = 2                                             # lstm层数
-        self.bidirectional = True                                       # 是否双向lstm
-
+    def __init__(self, with_embedding=True, with_multi_layer_perceptron=False):
+        super().__init__(with_embedding, with_multi_layer_perceptron)
+        self['model_name'] = "LSTM-CRF"
+        self['learning_rate'] = 1e-3
+        self.add(Param(
+            name='embed_size',
+            value='300',
+            desc='embed size'
+        ))
+        self.add(Param(
+            name='dropout', value=0, desc='lstm dropout rate'
+        ))
+        self.add(Param(
+            name='hidden_size', value=256, desc='lstm hidden size'
+        ))
+        self.add(Param(
+            name='num_layers', value=2, desc='nums of lstm layer'
+        ))
+        self.add(Param(
+            name='bidirectional', value=True, desc='whether use bidirection lstm'
+        ))
+        self.add(Param(
+            name='sos_tag_id', value=0, desc='end of sentence tag id'
+        ))
+        self.add(Param(
+            name='eos_tag_id', value=1, desc='start of sentence tag id'
+        ))
+        self.add(Param(
+            name='tag_vocab_size', value=0, desc='tag vocab size'
+        ))
 
 class SpatialDropout(nn.Dropout2d):
     def __init__(self, p=0.6):
@@ -37,50 +54,52 @@ class SpatialDropout(nn.Dropout2d):
         x = x.squeeze(2)  # (N, T, K)
         return x
 
-class Model(BaseModule):
+class Model(BaseModel):
 
     def __init__(self, config):
         super().__init__()
-        self.START_TAG_ID = config.n_tag
-        self.STOP_TAG_ID = config.n_tag + 1
-        self.tagset_size = config.n_tag + 2
-        self.emebdding_size = config.embed_size
-        if config.embedding_pretrained is not None:
-            self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
-        else:
-            self.embedding = nn.Embedding(config.n_vocab, config.embed_size, padding_idx=config.padding_idx)
-
-        self.bilstm = nn.LSTM(input_size=config.embed_size ,hidden_size=config.hidden_size,
-                              batch_first=True, num_layers=config.num_layers,dropout=config.dropout,
+        self.config = config
+        self.START_TAG_ID = config.tag_vocab_size
+        self.STOP_TAG_ID = config.tag_vocab_size + 1
+        self.tagset_size = config.tag_vocab_size + 2
+        self.embedding = self._make_default_embedding_layer()
+        self.bilstm = nn.LSTM(input_size=config.embedding_output_dim ,hidden_size=config.hidden_size,
+                              batch_first=True, num_layers=config.num_layers, dropout=config.dropout,
                               bidirectional=config.bidirectional)
         self.dropout = SpatialDropout(config.dropout)
-        self.hidden_input_size = config.hidden_size * 2 if config.bidirectional else config.hidden_size
-        self.layer_norm = LayerNorm(self.hidden_input_size)
-        self.classifier = nn.Linear(self.hidden_input_size, self.tagset_size)
+        self.bilstm_output_size = config.hidden_size * 2 if config.bidirectional else config.hidden_size
+        self.layer_norm = LayerNorm(self.bilstm_output_size)
+        self.classifier = nn.Linear(self.bilstm_output_size, self.tagset_size)
         self.crf = CRF(self.START_TAG_ID, self.STOP_TAG_ID, tagset_size=self.tagset_size)
 
-    def forward(self, inputs_ids):
-        embs = self.embedding(inputs_ids)
+    def forward(self, inputs):
+        input_ids = inputs['input_ids']
+        embs = self.embedding(input_ids)
         embs = self.dropout(embs)
-        seqence_output, _ = self.bilstm(embs)
-        seqence_output= self.layer_norm(seqence_output)
-        features = self.classifier(seqence_output)
+        sequence_output, _ = self.bilstm(embs)
+        sequence_output= self.layer_norm(sequence_output)
+        features = self.classifier(sequence_output)
         return features
 
-    def loss(self, input_ids, input_lens, input_tags):
-        features = self.forward(input_ids)
-        return self.crf.calculate_loss(features, input_lens, input_tags)
+    def loss(self, inputs, outputs, targets):
+        return self.crf.calculate_loss(outputs, inputs['input_lengths'], targets['target'])
 
-    def evaluate(self, input_ids, input_lens, input_tags):
-        features = self.forward(input_ids)
-        loss = self.crf.calculate_loss(features, input_lens, input_tags)
-        tags, confidences = self.crf.obtain_labels(features, input_lens)
-        return tags, confidences, loss
+    def features2label(self, features, input_lengths):
+        tags, confidences = self.crf.obtain_labels(features, input_lengths)
+        return tags
 
-    def predict(self, input_ids, input_lens):
-        features = self.forward(input_ids)
-        tags, confidences = self.crf.obtain_labels(features, input_lens)
-        return tags, confidences
+    def evaluate(self, inputs, targets):
+        input_ids, input_lengths = inputs['input_ids'], inputs['input_lengths']
+        features = self.forward(inputs)
+        loss = self.loss(inputs, features, targets)
+        tags = self.features2label(features, input_lengths)
+        return tags, loss
+
+    def predict(self, inputs):
+        input_ids, input_lengths = inputs['input_ids'], inputs['input_lengths']
+        features = self.forward(inputs)
+        tags = self.features2label(features, input_lengths)
+        return tags
 
     def optimizer(self):
         return optim.Adam

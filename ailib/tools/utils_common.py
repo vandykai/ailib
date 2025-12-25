@@ -1,32 +1,14 @@
-def dict_DFS(data, func, extra_tag=None):
-    if isinstance(data, dict):
-        for k, v in data.items():
-            data[k] = dict_DFS(v, func, k)
-    elif isinstance(data, list):
-        for index, item in enumerate(data):
-            data[index] = dict_DFS(item, func)
-    data = func(extra_tag, data)
-    return data
 
-def dict_BFS(data, func, extra_tag=None):
-    data = func(extra_tag, data)
-    if isinstance(data, dict):
-        for k, v in data.items():
-            data[k] = dict_BFS(v, func, k)
-    elif isinstance(data, list):
-        for index, item in enumerate(data):
-            data[index] = dict_BFS(data[index], func)
-    return data
+import torch
 
-def dict_get(data, key):
-    value = []
-    if isinstance(data, dict):
-        for k, v in data.items():
-            if k == key:
-                value.append(v)
-            else:
-                value.extend(dict_get(v, key))
-    elif isinstance(data, list):
-        for item in data:
-            value.extend(dict_get(item, key))
-    return value
+def make_positions(tensor, padding_idx: int, onnx_trace: bool = False):
+    """Replace non-padding symbols with their position numbers.
+
+    Position numbers begin at padding_idx+1. Padding symbols are ignored.
+    """
+    # The series of casts and type-conversions here are carefully
+    # balanced to both work with ONNX export and XLA. In particular XLA
+    # prefers ints, cumsum defaults to output longs, and ONNX doesn't know
+    # how to handle the dtype kwarg in cumsum.
+    mask = tensor.ne(padding_idx).int()
+    return (torch.cumsum(mask, dim=1).type_as(mask) * mask).long() + padding_idx

@@ -1,0 +1,12 @@
+{
+    "prefix": "datetime_convert",
+    "body": [
+        "import datetime",
+        "def datetime_convert(time):",
+        "    if type(time) == str:",
+        "        return datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S').strftime('%Y%m%d')",
+        "    else:",
+        "        return time"
+    ],
+    "description": "convert datetime str format"
+}

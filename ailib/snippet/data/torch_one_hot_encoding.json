@@ -1,0 +1,18 @@
+{
+    "prefix": "torch_one_hot_encoding",
+    "body": [
+        "class_num = 10",
+        "batch_size = 4",
+        "label = torch.LongTensor(batch_size, 1).random_() % class_num",
+        "#tensor([[6],",
+        "#        [0],",
+        "#        [3],",
+        "#        [2]])",
+        "torch.zeros(batch_size, class_num).scatter_(1, label, 1)",
+        "#tensor([[0., 0., 0., 0., 0., 0., 1., 0., 0., 0.],",
+        "#        [1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],",
+        "#        [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],",
+        "#        [0., 0., 1., 0., 0., 0., 0., 0., 0., 0.]])"
+    ],
+    "description": "usage scatter_ to one hot encoding"
+}

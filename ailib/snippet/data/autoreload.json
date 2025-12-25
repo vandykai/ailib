@@ -4,5 +4,5 @@
         "%load_ext autoreload",
         "%autoreload 2"
     ],
-    "description": "use of autoreload"
+    "description": "usage of autoreload"
 }

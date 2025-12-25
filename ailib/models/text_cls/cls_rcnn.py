@@ -1,11 +1,11 @@
-from ailib.models.base_model import BaseModule
+from ailib.models.base_model import BaseModel
 import torch, torch.nn.functional as F
 from torch import ByteTensor, DoubleTensor, FloatTensor, HalfTensor, LongTensor, ShortTensor, Tensor
 from torch import nn, optim, as_tensor
 from torch.utils.data import BatchSampler, DataLoader, Dataset, Sampler, TensorDataset
 from torch.nn.utils import weight_norm, spectral_norm
 
-class Config(object):
+class ModelConfig(object):
 
     """配置参数"""
     def __init__(self):
@@ -22,10 +22,11 @@ class Config(object):
         self.num_layers = 2                                             # lstm层数
         self.bidirectional = True                                       # 是否双向lstm
 
-class Model(BaseModule):
+class Model(BaseModel):
     '''Recurrent Convolutional Neural Networks for Text Classification'''
     def __init__(self, config):
         super().__init__()
+        self.config = config
         if config.embedding_pretrained is not None:
             self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
         else:
@@ -37,7 +38,8 @@ class Model(BaseModule):
         self.fc = nn.Linear(hidden_input_size, config.n_classes)
 
     def forward(self, inputs):
-        embed = self.embedding(inputs)
+        inputs_ids= inputs["text"]
+        embed = self.embedding(inputs_ids)
         out, _ = self.lstm(embed)
         out = torch.cat((embed, out), 2)
         out = self.fc_middle(out)

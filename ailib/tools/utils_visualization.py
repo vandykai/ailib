@@ -1,13 +1,18 @@
+from collections import OrderedDict
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from collections import OrderedDict
-import torch.nn as nn
 import torch
+import torch.nn as nn
+from matplotlib.pyplot import MultipleLocator
+from sklearn.metrics import (auc, average_precision_score, confusion_matrix,
+                             precision_recall_curve, roc_curve)
+
 
 def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix'):
-    plt.figure(figsize=(16, 8), dpi=100)
+    plt.figure(figsize=(8, 4), dpi=100)
     np.set_printoptions(precision=2)
 
     # 在混淆矩阵中每格的概率值
@@ -42,11 +47,91 @@ def plot_confusion_matrix(cm, classes, save_path=None, title='Confusion Matrix')
     # show confusion matrix
     if save_path:
         plt.savefig(save_path, format='png')
-    plt.show()
 
 def plot_heatmap(cm, classes, data_fmt='d'):
     df_cm = pd.DataFrame(cm, index = classes, columns =classes)
     return sns.heatmap(df_cm, annot=True, fmt=data_fmt)
+
+def plot_roc_curve(fpr: list, tpr: list, thresholds: list):
+    ks = np.max(tpr-fpr)
+    ks_pos = np.argmax(tpr-fpr)
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr)
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.plot([0, 1-ks], [ks, 1], 'r--')
+    plt.text(0, ks, round(ks, 4), ha='right', va='center', fontsize=10)
+    plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC curve (area = {round(roc_auc, 4)}, ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
+    #plt.legend(loc="lower right")
+
+def plot_ks_curve(fpr: list, tpr: list, thresholds: list):
+    ks = np.max(tpr-fpr)
+    ks_pos = np.argmax(tpr-fpr)
+    plt.plot(thresholds, tpr-fpr)
+    #plt.plot([0, 1], [ks, ks], 'k--')
+    plt.text(0, ks, round(ks, 4), ha='right', va='center', fontsize=10)
+    plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
+    plt.gca().yaxis.set_major_locator(MultipleLocator(0.05))
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, ks])
+    plt.xlabel('thresholds')
+    plt.ylabel('KS value')
+    plt.title(f'KS curve (ks={round(ks, 4)}, thresholds={thresholds[ks_pos]})')
+    #plt.legend(loc="lower right")
+
+def plot_fpr_tpr_curve(fpr: list, tpr: list, thresholds: list):
+    [fpr_plot] = plt.plot(thresholds, fpr, 'b')
+    [tpr_plot] = plt.plot(thresholds, tpr, 'r')
+    plt.gca().xaxis.set_major_locator(MultipleLocator(0.1))
+    plt.gca().yaxis.set_major_locator(MultipleLocator(0.1))
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.0])
+    plt.xlabel('thresholds')
+    plt.ylabel('tpr_fpr value')
+    plt.title(f'tpr fpr curve')
+    plt.legend(handles=[fpr_plot, tpr_plot], labels=['fpr','tpr'], loc='best')
+
+def plot_precision_recall_curve(precision, recall, average_precision):
+    plt.step(recall, precision, color='b', alpha=0.2, where='post')
+    plt.fill_between(recall, precision, step='post', alpha=0.2, color='b')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.ylim([0.0, 1.05])
+    plt.xlim([0.0, 1.0])
+    plt.title('Precision-Recall: {0:0.6f}'.format(average_precision))
+
+def plot_cls_result(y_true: list, y_pred: list, pos_label=1):
+    y_true = np.array(y_true, dtype=np.int8)
+    y_pred = np.array(y_pred, dtype=np.float64)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:, pos_label]
+    cm = confusion_matrix(y_true, y_pred.round())
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=pos_label, drop_intermediate=False)
+    plot_roc_curve(fpr, tpr, thresholds)
+    plt.show()
+    plot_ks_curve(fpr, tpr, thresholds)
+    plt.show()
+    plot_fpr_tpr_curve(fpr, tpr, thresholds)
+    plt.show()
+    average_precision = average_precision_score(y_true, y_pred)
+    precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    plot_precision_recall_curve(precision, recall, average_precision)
+    plt.show()
+    plot_confusion_matrix(cm, classes=[0,1])
+    plt.show()
+
+def plot_cls_auc(y_true: list, y_pred: list, pos_label=1):
+    y_true = np.array(y_true, dtype=np.int8)
+    y_pred = np.array(y_pred, dtype=np.float64)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:, pos_label]
+    cm = confusion_matrix(y_true, y_pred.round())
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=pos_label, drop_intermediate=False)
+    plot_roc_curve(fpr, tpr, thresholds)
 
 def print_decisition_path(text_feature, clf, text_feature_name):
     node_indicator = clf.decision_path(text_feature)
@@ -75,6 +160,170 @@ def print_decisition_path(text_feature, clf, text_feature_name):
                  threshold_sign,
                  threshold[node_id]))
 
+def plot_dict_bar(dict_value, y_type='percent', figsize='auto', reverse=True, **kwargs):
+    if figsize=='auto':
+        figsize = (4, int(len(dict_value)/5))
+        fig = plt.figure(figsize=figsize)
+    elif figsize:
+        fig = plt.figure(figsize=figsize)
+    def key_compare(x):
+        try:
+            key = str(x[0])
+            split_pos = len(key)
+            if key.count('-') == 3: # '-a--b'
+                split_pos = key.index('-', key.index('-')+1)
+            elif key.count('-') == 2: # '-a-b' 'a--b'
+                split_pos = key.index('-', 1)
+            elif key.count('-') == 1: # 'a-b'
+                split_pos = key.index('-')
+            return float(key[:split_pos])
+        except:
+            return x
+    dict_value = sorted(dict_value.items(), key=key_compare)
+    x = [str(it[0]) for it in dict_value]
+    y = [it[1] for it in dict_value]
+    plt.title(f"total num:{sum(y)}")
+    assert y_type in ['cumsum', 'count', 'percent']
+    if y_type == 'cumsum':
+        y = np.cumsum(y)/sum(y)
+    elif y_type == 'percent':
+        y = np.array(y)/sum(y)
+
+    num=np.arange(len(y))
+    if reverse:
+        plt.ylim(min(num)-1,max(num)+1)
+        h = plt.barh(x, y, **kwargs)
+        plt.bar_label(h)
+    else:
+        plt.xlim(min(num)-1,max(num)+1)
+        h = plt.bar(x, y, **kwargs)
+        plt.bar_label(h)
+    return h
+
+def plot_dict_bars(dict_list, y_types='percent', titles='', figsize='auto', reverse=True, **kwargs):
+    if figsize=='auto':
+        figsize = (len(dict_list)*10, max(map(len, dict_list))/5)
+    if isinstance(y_types, str):
+        y_types = [y_types] * len(dict_list)
+    if isinstance(titles, str):
+        titles = [titles] * len(dict_list)
+    fig, subfig = plt.subplots(nrows=1, ncols=len(dict_list), figsize=figsize)
+    def key_compare(x):
+        try:
+            key = str(x[0])
+            split_pos = len(key)
+            if key.count('_') == 1: # '-a_b' 'a_-b'
+                split_pos = key.index('_', 1)
+            return float(key[:split_pos])
+        except:
+            return x
+    for dict_value, y_type, title, ax in zip(dict_list, y_types, titles, subfig):
+        dict_value = sorted(dict_value.items(), key=key_compare)
+        x = [str(it[0]) for it in dict_value]
+        y = [it[1] for it in dict_value]
+        ax.set_title(f"{title} total num:{sum(y)}")
+        assert y_type in ['cumsum', 'count', 'percent']
+        if y_type == 'cumsum':
+            y = np.cumsum(y)/sum(y)
+        elif y_type == 'percent':
+            y = np.array(y)/sum(y)
+
+        num=np.arange(len(y))
+        if reverse:
+            ax.set_ylim(min(num)-1,max(num)+1)
+            h = ax.barh(x, y, **kwargs)
+            ax.bar_label(h)
+        else:
+            ax.set_xlim(min(num)-1,max(num)+1)
+            h = ax.bar(x, y, **kwargs)
+            ax.bar_label(h)
+    return plt
+
+def plot_dict_line(dict_value, y_type='cumsum', figsize=(4,4), reverse=True, **kwargs):
+    if figsize:
+        fig = plt.figure(figsize=figsize)
+    def key_compare(x):
+        try:
+            return float(str(x[0]).split('-')[0])
+        except:
+            return x
+    dict_value = sorted(dict_value.items(), key=key_compare)
+    x = [str(it[0]) for it in dict_value]
+    y = [it[1] for it in dict_value]
+    if y_type == 'cumsum':
+        y = np.cumsum(y)/sum(y)
+    elif y_type == 'percent':
+        y = np.array(y)/sum(y)
+    num=np.arange(len(y))
+    
+    if reverse:
+        plt.ylim(min(num)-1,max(num)+1)
+        h, = plt.plot(y, x, **kwargs)
+    else:
+        plt.xlim(min(num)-1,max(num)+1)
+        h, = plt.plot(x, y, **kwargs)
+    return h
+
+
+def get_score_bin_statistic(y_true: list, y_pred: list, pos_label=1, bins=10, bins_type='frequence', actual_pos_rate=None):
+    y_true = np.array(y_true, dtype=np.int8)
+    y_pred = np.array(y_pred, dtype=np.float64)
+    if len(y_pred.shape) == 2:
+        y_pred = y_pred[:, pos_label]
+    if bins_type == "frequence":
+        score_bin = pd.qcut(y_pred, bins, duplicates='drop')
+    elif bins_type == "distance":
+        score_bin = pd.cut(y_pred, bins, duplicates='drop')
+    else:
+        raise ValueError("bins_type must in (frequence, distance)")
+    result_df = pd.DataFrame({'score_bin':score_bin, 'y_true':y_true, 'y_pred':y_pred})
+    result_df = result_df.groupby(['score_bin'], as_index=False, sort=False, dropna=True, observed=False).agg(sample_num=('y_true', 'count'), 
+                                                                      pos_sample_num=('y_true', lambda x:np.sum(x==pos_label)))
+
+    if actual_pos_rate is not None:
+        global_pos_rate = result_df['pos_sample_num'].sum()/result_df['sample_num'].sum()
+        neg_global_pos_rate_rate = (1/actual_pos_rate-1)/(1/global_pos_rate-1)
+        result_df['sample_num'] = (result_df['sample_num'] - result_df['pos_sample_num'])*neg_global_pos_rate_rate + result_df['pos_sample_num']
+    result_df.sort_values(by=['score_bin'], ascending=False, inplace=True)
+    result_df.reset_index(drop=True, inplace=True)
+    result_df['sample_cumsum'] = result_df['sample_num'].cumsum()
+    result_df['pos_sample_cumsum'] = result_df['pos_sample_num'].cumsum()
+    result_df['pos_sample_rate'] = result_df['pos_sample_num']/result_df['sample_num']
+    result_df['precision'] = result_df['pos_sample_cumsum']/result_df['sample_cumsum']
+    result_df['recall/tpr'] = result_df['pos_sample_cumsum']/result_df['pos_sample_num'].sum()
+    result_df['fpr'] = (result_df['sample_cumsum']-result_df['pos_sample_cumsum'])/(result_df['sample_num'].sum()-result_df['pos_sample_num'].sum())
+    result_df['ks'] = result_df['recall/tpr'] - result_df['fpr']
+    result_df['lift'] = (result_df['pos_sample_num']/result_df['sample_num'])/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
+    result_df['lift_cumsum'] = result_df['precision']/(result_df['pos_sample_num'].sum()/result_df['sample_num'].sum())
+    return result_df
+
+def plot_time_distribute(df, date_key, label_key, pos_label=1, figsize='auto'):
+    '''
+    打印：全量/正样本随时间的分布，
+    :param df:
+    :param date_key:
+    :param label_key:
+    :param figsize:
+    :return:
+    Example:
+        >>> plot_time_distribute(df, 'loan_date', 'label')
+    '''
+    dict_value = df[date_key].value_counts().to_dict()
+    if figsize=='auto':
+        figsize = (22, max(int(len(dict_value)/5), 5))
+        fig = plt.figure(figsize=figsize)
+    elif figsize:
+        fig = plt.figure(figsize=figsize)
+    plt.subplot(1, 3, 1)
+    plot_dict_bar(dict_value, figsize=None, y_type='cumsum')
+    plt.subplot(1, 3, 2)
+    pos_df = df[df[label_key]==pos_label]
+    plot_dict_bar(pos_df[date_key].value_counts().to_dict(), figsize=None, y_type='cumsum')
+    plt.subplot(1, 3, 3)
+    neg_df = df[df[label_key]!=pos_label]
+    plot_dict_bar(neg_df[date_key].value_counts().to_dict(), figsize=None, y_type='cumsum')
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.5, hspace=None)
+    return plt
 
 def model_summary(model, *inputs, batch_size=-1, show_input=True):
     '''

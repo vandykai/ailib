@@ -1,0 +1,21 @@
+{
+    "prefix": "torch_text",
+    "body": [
+        "text_field = torchtext.data.ReversibleField(tokenize=get_tokenizer(tokenizer), unk_token=\"<unk>\", batch_first=True)",
+        "document_field = torchtext.data.NestedField(text_field, tokenize=get_tokenizer(none_token), include_lengths=True)",
+        "label_field = torchtext.data.ReversibleField(sequential=False, tokenize=get_tokenizer(none_token), batch_first=True,  unk_token=None, is_target=True)",
+        "def get_dataset(data, document_field, label_field):",
+        "    examples = []",
+        "    text_fields = [(\"doc\", document_field), (\"label\", label_field)]",
+        "    for (text, label) in data:",
+        "        examples.append(torchtext.data.Example.fromlist([text, label], text_fields))",
+        "    return torchtext.data.Dataset(examples, text_fields)",
+        "dataset_train = get_dataset(zip(X_train, Y_train), document_field, label_field)",
+        "dataset_dev = get_dataset(zip(X_dev, Y_dev), document_field, label_field)",
+        "document_field.build_vocab(dataset_train)",
+        "label_field.build_vocab(dataset_train)",
+        "train_iter, dev_iter = torchtext.data.BucketIterator.splits(",
+        "    (dataset_train, dataset_dev), batch_size=32, sort_key=lambda x:x.len, sort_within_batch=False)"
+    ],
+    "description": "usage of TorchText"
+}

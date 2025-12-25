@@ -103,17 +103,6 @@ def jieba_random_cut(text: str, length_range: tuple) -> str:
     result = clean_space(result)
     return result
 
-def file_de_duplication_line(file_name):
-    all_line = []
-    with open(file_name) as f:
-        for line in f:
-            line = line.strip()
-            if line not in temp_line:
-                all_line.append(line)
-    with open(file_name, "w") as f:
-        for line in all_line:
-            f.write(line+"\n")
-
 def cut_sent(para):
     para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
     para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
